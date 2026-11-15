@@ -1,0 +1,52 @@
+PageCollector 0.1 — erster Entwurf
+================================
+
+1. Das gesamte ZIP in einen Ordner entpacken.
+2. Start.cmd doppelklicken.
+3. Für den ersten Test: „Demo laden“, danach „Starten“.
+
+Die Demo lädt example.com mit zwei Beispielwerten. Sie sucht noch keine
+echten Artikel. Beim ersten Start wird die Speicherhilfe SingleFile einmalig
+von GitHub geladen (ca. 82 MB). Edge oder Chrome muss installiert sein.
+Eine separate .NET-Installation ist für das fertige Programm nicht nötig.
+
+Danach öffnet sich die gespeicherte Seite im Standardbrowser, auch in Firefox.
+Zurück im Programm:
+
+  „Übernehmen & weiter“  -> diese Datei behalten, nächster Suchwert
+  „Nächste URL“         -> nächste Vorlage für denselben Suchwert versuchen
+  „Erneut versuchen“    -> dieselbe Adresse noch einmal laden
+  „Wert überspringen“   -> nächster Suchwert
+  „Abbrechen“           -> stoppen; bereits bestätigte Dateien bleiben
+
+Für die echten Seiten:
+
+Links:  ein Suchwert pro Zeile, beispielsweise 123456.
+Rechts: eine URL-Vorlage pro Zeile, in der gewünschten Reihenfolge.
+        Den variablen Teil durch {id} ersetzen, z.B.:
+
+        https://deine-quelle.example/artikel/Q{id}.html
+
+Das ist nur ein Muster. Bitte die tatsächlichen Adressen eintragen.
+{Suchwert} funktioniert als Platzhalter ebenfalls.
+
+Bitte die Vorschau inhaltlich prüfen. Auch eine „nicht gefunden“-Seite
+kann technisch erfolgreich gespeichert werden. Es gibt in dieser Version
+noch keine automatische Erkennung gültiger Artikel.
+
+Bestätigte Seiten landen als .html im Ausgabeordner. Dazu kommen eine
+kleine .source.json-Datei mit Herkunftsangaben und ein CSV-Protokoll.
+Vorhandene Dateien werden nicht überschrieben. Gespeicherte Dateien
+lassen sich in der Ergebnisliste per Doppelklick wieder öffnen.
+
+Die Vorschau verwendet temporäre Dateien. Nach Abschluss oder Abbruch
+zum erneuten Öffnen die bestätigte Datei im Ausgabeordner verwenden.
+Die automatisch geöffneten Browser-Tabs kannst du selbst schließen.
+
+Build und Kernprüfungen wurden durchgeführt. Die Windows-Oberfläche
+und ein vollständiger Browserlauf müssen noch auf Windows praktisch
+getestet werden. Einzelheiten stehen in TEST-REPORT.md.
+
+Vollständiger C#-Quelltext und englische README sind enthalten.
+Bei einem Fehler helfen das CSV-Protokoll und die verwendete URL-Vorlage
+für die nächste Überarbeitung.

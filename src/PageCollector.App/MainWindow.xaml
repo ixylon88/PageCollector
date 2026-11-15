@@ -1,0 +1,100 @@
+<Window x:Class="PageCollector.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="PageCollector · Entwurf 0.1" Width="1160" Height="880"
+        MinWidth="990" MinHeight="760" WindowStartupLocation="CenterScreen"
+        Background="#F5F6F8" FontFamily="Segoe UI" FontSize="13"
+        Closing="Window_Closing">
+    <Grid Margin="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <DockPanel Margin="0,0,0,12">
+            <Button x:Name="DemoButton" Content="Demo laden" DockPanel.Dock="Right" Click="Demo_Click" />
+            <StackPanel>
+                <TextBlock Text="PageCollector" FontSize="25" FontWeight="SemiBold" />
+                <TextBlock Text="URL-Vorlagen ausprobieren · gespeicherte Seite prüfen · ersten passenden Treffer behalten"
+                           Foreground="#4F5663" />
+            </StackPanel>
+        </DockPanel>
+        <Grid Grid.Row="1" x:Name="InputsPanel" Margin="0,0,0,8">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="1*"/><ColumnDefinition Width="2*"/></Grid.ColumnDefinitions>
+            <GroupBox Header="1. Suchwerte — ein Wert pro Zeile" Margin="0,0,10,0">
+                <DockPanel>
+                    <Button Content="TXT-Datei laden…" DockPanel.Dock="Bottom" HorizontalAlignment="Left"
+                            Margin="0,6,0,0" Click="LoadValues_Click" />
+                    <TextBox x:Name="ValuesBox" Height="128" AcceptsReturn="True" AcceptsTab="False"
+                             VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                             VerticalContentAlignment="Top" FontFamily="Consolas" />
+                </DockPanel>
+            </GroupBox>
+            <GroupBox Grid.Column="1" Header="2. URL-Vorlagen — erste Zeile hat höchste Priorität">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Bottom" Margin="0,6,0,3" Foreground="#4F5663"
+                               Text="Platzhalter: {id} oder {Suchwert} · Beispiel: https://example.com/?article={id}" />
+                    <TextBox x:Name="TemplatesBox" Height="128" AcceptsReturn="True" AcceptsTab="False"
+                             VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                             VerticalContentAlignment="Top" FontFamily="Consolas" />
+                </DockPanel>
+            </GroupBox>
+        </Grid>
+        <GroupBox Grid.Row="2" x:Name="SettingsPanel" Header="3. Ablage und Aufnahme" Margin="0,0,0,10">
+            <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="110"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                <TextBlock Text="Ausgabeordner" VerticalAlignment="Center" />
+                <TextBox x:Name="OutputBox" Grid.Column="1" Margin="0,0,8,5" />
+                <Button Grid.Column="2" Content="Auswählen…" Click="ChooseOutput_Click" />
+                <TextBlock Grid.Row="1" Text="Edge / Chrome" VerticalAlignment="Center" />
+                <TextBox x:Name="BrowserBox" Grid.Row="1" Grid.Column="1" Margin="0,0,8,5"
+                         ToolTip="Leer lassen: Edge oder Chrome automatisch finden. Alternativ den vollständigen Pfad zur Browser-EXE wählen." />
+                <Button Grid.Row="1" Grid.Column="2" Content="Auswählen…" Click="ChooseBrowser_Click" />
+                <WrapPanel Grid.Row="2" Grid.ColumnSpan="3" VerticalAlignment="Center">
+                    <TextBlock Text="Zusätzlich warten (Sekunden):" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <TextBox x:Name="DelayBox" Text="1,5" Width="55" Margin="0,0,18,0" />
+                    <CheckBox x:Name="AutoPreviewBox" Content="Vorschau automatisch im Standardbrowser öffnen"
+                              IsChecked="True" VerticalAlignment="Center" />
+                </WrapPanel>
+            </Grid>
+        </GroupBox>
+        <Border Grid.Row="3" Padding="12" Background="White" BorderBrush="#D6DAE1" BorderThickness="1" CornerRadius="5" Margin="0,0,0,10">
+            <StackPanel>
+                <TextBlock x:Name="ProgressText" Text="Bereit. Zum Ausprobieren oben „Demo laden“ wählen."
+                           FontWeight="SemiBold" FontSize="14" TextWrapping="Wrap" />
+                <TextBox x:Name="CurrentUrlBox" Margin="0,6,0,3" IsReadOnly="True" BorderThickness="0" Background="Transparent"
+                         Padding="0" FontFamily="Consolas" Text="" HorizontalScrollBarVisibility="Auto" />
+                <TextBlock x:Name="DetailText" Text="Beim ersten Start wird SingleFile CLI einmalig von GitHub geladen (ca. 82 MB)."
+                           Foreground="#4F5663" TextWrapping="Wrap" MaxHeight="55" TextTrimming="CharacterEllipsis" />
+                <ProgressBar x:Name="WorkProgress" Height="4" Margin="0,8,0,0" Visibility="Collapsed" />
+            </StackPanel>
+        </Border>
+        <WrapPanel Grid.Row="4" Margin="0,0,0,4">
+            <Button x:Name="StartButton" Content="Starten" FontWeight="SemiBold" Click="Start_Click" />
+            <Button x:Name="PreviewButton" Content="Vorschau öffnen" IsEnabled="False" Click="Preview_Click" />
+            <Button x:Name="AcceptButton" Content="Übernehmen &amp; weiter" FontWeight="SemiBold" IsEnabled="False" Click="Accept_Click" />
+            <Button x:Name="NextButton" Content="Nächste URL" IsEnabled="False" Click="Next_Click" />
+            <Button x:Name="RetryButton" Content="Erneut versuchen" IsEnabled="False" Click="Retry_Click" />
+            <Button x:Name="SkipButton" Content="Wert überspringen" IsEnabled="False" Click="Skip_Click" />
+            <Button x:Name="CancelButton" Content="Abbrechen" IsEnabled="False" Click="Cancel_Click" />
+            <Button Content="Ausgabeordner öffnen" Click="OpenOutput_Click" />
+        </WrapPanel>
+        <DataGrid Grid.Row="5" x:Name="ResultsGrid" AutoGenerateColumns="False" IsReadOnly="True"
+                  CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column"
+                  GridLinesVisibility="Horizontal" AlternationCount="0" MinHeight="80"
+                  MouseDoubleClick="Results_DoubleClick" SelectionMode="Single">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Suchwert" Binding="{Binding Value}" Width="130" />
+                <DataGridTextColumn Header="Ergebnis" Binding="{Binding Status}" Width="150" />
+                <DataGridTextColumn Header="Details / Datei (gespeicherte Datei per Doppelklick öffnen)" Binding="{Binding Details}" Width="*" />
+            </DataGrid.Columns>
+        </DataGrid>
+        <TextBlock Grid.Row="6" Margin="0,9,0,0" Foreground="#4F5663" TextWrapping="Wrap"
+                   Text="Bitte den Inhalt der Vorschau prüfen: Auch Fehlerseiten lassen sich speichern. Nur „Übernehmen“ bestätigt einen Treffer." />
+    </Grid>
+</Window>
