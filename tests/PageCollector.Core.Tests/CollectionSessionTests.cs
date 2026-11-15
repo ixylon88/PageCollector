@@ -1,7 +1,3 @@
-using System.Text.Json;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using PageCollector.Core;
-
 namespace PageCollector.Core.Tests;
 
 [TestClass]

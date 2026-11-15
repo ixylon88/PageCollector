@@ -1,5 +1,3 @@
-using PageCollector.Core;
-
 namespace PageCollector.Core.Tests;
 
 [TestClass]

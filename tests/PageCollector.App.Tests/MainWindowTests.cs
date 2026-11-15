@@ -3,7 +3,6 @@ using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
-using PageCollector.App;
 
 namespace PageCollector.App.Tests;
 

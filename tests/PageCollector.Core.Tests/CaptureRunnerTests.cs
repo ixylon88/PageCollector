@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using PageCollector.Core;
 
 namespace PageCollector.Core.Tests;
 
