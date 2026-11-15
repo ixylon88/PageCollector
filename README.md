@@ -4,14 +4,14 @@ A small C# / WPF application for Windows that tries URL templates in order and s
 
 ## Quick start
 
-1. Open `PageCollector.sln` and build the source as described below, or download the **PageCollector-Windows-x64** artifact from a successful GitHub Actions run, extract the entire ZIP and run `PageCollector.exe`.
+1. Open `PageCollector.sln` and build the source as described below, or download the **PageCollector-win-x64-self-contained** artifact from a successful GitHub Actions run, extract the entire ZIP and run `PageCollector.exe`.
 2. Enter search values and URL templates in the first tab, or use **Demo laden** for a functional test with two values on `example.com`.
 3. The **Automatik und Ausschlusstitel** tab enables automatic collection by default. Review its title exclusions before a real collection.
 4. Optionally set a filename prefix and suffix in **Dateinamen**. Appending the page title is enabled by default.
 5. Select an output directory and click **Starten**. The application finishes each value before moving to the next; no browser tabs or approval prompts are opened in automatic mode.
 6. Open saved results by double-clicking their rows, or use **Ausgabeordner öffnen**.
 
-The package targets **Windows x64** and includes its .NET runtime. Edge or Chrome must be installed. The first run downloads the pinned SingleFile CLI 2.26.0 helper (about 82 MB) from its official GitHub release and verifies its SHA-256 digest. An already downloaded, verified helper is reused. A preview can be opened in any default browser, including Firefox.
+Both packages target **Windows x64**. The **self-contained** package includes its .NET runtime. The smaller **framework-dependent** package requires the **.NET 10 Desktop Runtime (x64)** on the target computer. Edge or Chrome must be installed. The first run downloads the pinned SingleFile CLI 2.26.0 helper (about 82 MB) from its official GitHub release and verifies its SHA-256 digest. An already downloaded, verified helper is reused. A preview can be opened in any default browser, including Firefox.
 
 For the German walkthrough, see [START-HIER.txt](START-HIER.txt). Build and test details are in [TEST-REPORT.md](TEST-REPORT.md).
 
@@ -164,13 +164,25 @@ Use Windows and the .NET 10 SDK selected by `global.json`. Open **PageCollector.
 From PowerShell in the repository root:
 
 ```powershell
-.\Verify.ps1                  # Restore, check formatting, build, run tests
-.\Build.ps1                   # Build the complete solution
-.\Build.ps1 -Publish          # Also publish a self-contained app to dist/win-x64
-.\Start.cmd                   # Start the published application
+.\Verify.ps1                         # Restore, check formatting, build, run tests
+.\Build.ps1                          # Build the complete solution
+.\Build.ps1 -Publish                 # Publish framework-dependent
+.\Build.ps1 -Publish -SelfContained  # Publish with the .NET runtime
+.\Start.cmd                          # Start a locally published application
 ```
 
-`Build.cmd` and `Verify.cmd` remain compatibility wrappers; `Build.cmd` includes publishing. `Run-Source.cmd` runs the WPF app directly from source. All scripts stop on failed .NET commands.
+`Build.cmd` and `Verify.cmd` remain compatibility wrappers: `Build.cmd` publishes framework-dependent, and `Build.cmd -SelfContained` publishes self-contained. `Run-Source.cmd` runs the WPF app directly from source. All scripts stop on failed .NET commands.
+
+As in FileScope, `-Publish` now defaults to **framework-dependent**; add `-SelfContained` for the previous behavior with an included runtime. `-SelfContained` requires `-Publish`.
+
+| Variant | Publish directory | CI artifact | Requirement on the target computer |
+| --- | --- | --- | --- |
+| Framework-dependent | `dist/win-x64` | `PageCollector-win-x64-framework-dependent` | [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/10.0), Windows x64. |
+| Self-contained | `dist/win-x64_self-contained` | `PageCollector-win-x64-self-contained` | No separate .NET installation. |
+
+Publishing clears only the selected variant's generated directory, so old runtime files cannot remain in the framework-dependent package. The other variant is preserved. Publish performs its own restore/build for the selected mode, even with `-NoRestore`; that switch applies to the preceding solution build.
+
+`Start.cmd` selects `dist/win-x64` first, then the self-contained directory if the first is absent. When both exist, start the desired variant's `PageCollector.exe` directly to choose explicitly. Extract the complete CI artifact before starting its executable; keep the two packages in separate directories.
 
 The equivalent individual commands are:
 
@@ -181,7 +193,7 @@ dotnet build PageCollector.sln -c Release --no-restore
 dotnet test PageCollector.sln -c Release --no-build --no-restore
 ```
 
-GitHub Actions runs the same PowerShell scripts on Windows for pushes and pull requests to `dev` or `main`. It uploads TRX test results and a self-contained Windows x64 build. No browser or external website is needed for the default tests. The two real-browser integration tests are opt-in and otherwise reported as skipped; see [TEST-REPORT.md](TEST-REPORT.md).
+GitHub Actions runs the same PowerShell scripts on Windows for pushes and pull requests to `dev` or `main`. It publishes both Windows x64 variants sequentially and uploads them as separate artifacts alongside TRX test results. No browser or external website is needed for the default tests. The two real-browser integration tests are opt-in and otherwise reported as skipped; see [TEST-REPORT.md](TEST-REPORT.md).
 
 Core tests also run on Linux/macOS with `dotnet test tests/PageCollector.Core.Tests`. WPF execution and UI tests require Windows. `Verify.ps1` selects core tests on other platforms, while still compiling the complete solution with Windows targeting enabled.
 

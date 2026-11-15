@@ -1,6 +1,6 @@
 # Tests and verification
 
-Run `.\Verify.ps1` on Windows to reproduce the CI checks: restore, `dotnet format --verify-no-changes --severity warn`, Release build of the complete solution, and MSTest. TRX files are written to `artifacts/TestResults` and uploaded by GitHub Actions. `Build.ps1 -Publish` additionally produces a self-contained Windows x64 application.
+Run `.\Verify.ps1` on Windows to reproduce the CI checks: restore, `dotnet format --verify-no-changes --severity warn`, Release build of the complete solution, and MSTest. TRX files are written to `artifacts/TestResults` and uploaded by GitHub Actions. `Build.ps1 -Publish` produces the framework-dependent Windows x64 application; add `-SelfContained` to include its runtime. CI publishes both sequentially and uploads separate artifacts.
 
 ## Automated coverage
 
@@ -40,7 +40,7 @@ Without all three variables, the two tests are reported as skipped. They verify 
 
 ## Manual Windows smoke test
 
-1. Publish with `.\Build.ps1 -Publish`, start with `.\Start.cmd` and check that existing settings were retained.
+1. Publish with `.\Build.ps1 -Publish` and `.\Build.ps1 -Publish -SelfContained`. Start each output directory's `PageCollector.exe` separately and check that existing settings were retained. The framework-dependent variant requires the .NET 10 Desktop Runtime (x64); the self-contained variant includes it.
 2. Click **Demo laden → Starten**. Two files with ` - Example Domain` should be saved without previews or approval prompts.
 3. Set prefix `KB` and suffix `_DEU`, inspect the example, and repeat. Existing files must not be overwritten.
 4. Collect representative real URLs with your exclusion list and review the saved HTML and CSV. Title checks cannot detect every error page.
