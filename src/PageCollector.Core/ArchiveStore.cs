@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 
 namespace PageCollector.Core;
 
@@ -11,10 +10,11 @@ public sealed record SavedArchive(string HtmlPath, string MetadataPath);
 public static class ArchiveStore
 {
     public static async Task<SavedArchive> SaveAsync(string directory, Candidate candidate,
-        CaptureResult capture, CancellationToken cancellationToken)
+        CaptureResult capture, CancellationToken cancellationToken, ArchiveNamingOptions? naming = null,
+        bool automatic = false)
     {
         Directory.CreateDirectory(directory);
-        var stem = SafeFileName(candidate.Value);
+        var stem = ArchiveNaming.BuildStem(candidate.Value, capture.Title, naming ?? new());
         for (var index = 1; index <= 10000; index++)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -38,12 +38,12 @@ public static class ArchiveStore
                 metadataCreated = true;
                 await JsonSerializer.SerializeAsync(sidecar, new
                 {
-                    formatVersion = 1, searchValue = candidate.Value, urlTemplate = candidate.Template,
+                    formatVersion = 2, searchValue = candidate.Value, urlTemplate = candidate.Template,
                     requestedUrl = candidate.Url, title = capture.Title,
                     capturedAtUtc = capture.CapturedAtUtc, acceptedAtUtc = DateTimeOffset.UtcNow,
                     fileName = Path.GetFileName(html), sha256 = hash,
                     captureEngine = "SingleFile CLI " + EngineInstaller.Version,
-                    approval = "manual"
+                    approval = automatic ? "automatic-title-filter" : "manual"
                 }, new JsonSerializerOptions { WriteIndented = true }, cancellationToken).ConfigureAwait(false);
                 return new(html, metadata);
             }
@@ -60,12 +60,9 @@ public static class ArchiveStore
 
     public static string SafeFileName(string value)
     {
-        var result = Regex.Replace(value, "[<>:\"/\\\\|?*\\x00-\\x1F]", "_").Trim(' ', '.');
-        if (result.Length > 80) result = result[..80].TrimEnd(' ', '.');
+        var result = ArchiveNaming.Truncate(ArchiveNaming.Sanitize(value).Trim(' ', '.'), 80).TrimEnd(' ', '.');
         if (result.Length == 0) result = "page";
-        if (Regex.IsMatch(result, @"^(?:CON|PRN|AUX|NUL|CLOCK\$|COM[1-9¹²³]|LPT[1-9¹²³])(?:\.|$)", RegexOptions.IgnoreCase))
-            result = "_" + result;
-        return result;
+        return ArchiveNaming.ProtectDeviceName(result);
     }
 
     private static void TryDelete(string path)

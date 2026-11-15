@@ -1,52 +1,102 @@
-PageCollector 0.1 — erster Entwurf
-================================
+PageCollector 0.2
+=================
 
-1. Das gesamte ZIP in einen Ordner entpacken.
+1. Das gesamte ZIP in einen neuen Ordner entpacken.
 2. Start.cmd doppelklicken.
-3. Für den ersten Test: „Demo laden“, danach „Starten“.
+3. Zum Funktionstest „Demo laden“, danach „Starten“ wählen.
 
-Die Demo lädt example.com mit zwei Beispielwerten. Sie sucht noch keine
-echten Artikel. Beim ersten Start wird die Speicherhilfe SingleFile einmalig
-von GitHub geladen (ca. 82 MB). Edge oder Chrome muss installiert sein.
-Eine separate .NET-Installation ist für das fertige Programm nicht nötig.
+Das Programm übernimmt die vorhandenen Einstellungen aus Version 0.1.
+NEU: Automatik und Seitentitel im Dateinamen sind standardmäßig aktiv.
+Der Automatiklauf öffnet keine Vorschau und verlangt keine Bestätigung.
+Gespeicherte Dateien lassen sich per Doppelklick in der Ergebnisliste öffnen.
 
-Danach öffnet sich die gespeicherte Seite im Standardbrowser, auch in Firefox.
-Zurück im Programm:
+Edge oder Chrome muss installiert sein. Eine zusätzliche .NET-Installation
+ist nicht nötig. Die bereits heruntergeladene Speicherhilfe wird wiederverwendet;
+sonst wird SingleFile einmalig geladen (ca. 82 MB).
 
-  „Übernehmen & weiter“  -> diese Datei behalten, nächster Suchwert
-  „Nächste URL“         -> nächste Vorlage für denselben Suchwert versuchen
-  „Erneut versuchen“    -> dieselbe Adresse noch einmal laden
-  „Wert überspringen“   -> nächster Suchwert
-  „Abbrechen“           -> stoppen; bereits bestätigte Dateien bleiben
+SUCHWERTE UND URL-VORLAGEN
 
-Für die echten Seiten:
+Ein Wert und eine URL-Vorlage pro Zeile. Vorlagen werden von oben nach unten
+versucht. Für den Wert 123456 funktionieren beispielsweise:
 
-Links:  ein Suchwert pro Zeile, beispielsweise 123456.
-Rechts: eine URL-Vorlage pro Zeile, in der gewünschten Reihenfolge.
-        Den variablen Teil durch {id} ersetzen, z.B.:
+  {id}                       -> 123456
+  {id:1-3}                   -> 123
+  {id:1,2,3}                 -> 123
+  {id:4}                     -> 4
+  {id:5-6}                   -> 56
+  {id:1-3}/{id:4}/{id:5-6}    -> 123/4/56
+  {id:1-3}/{id}              -> 123/123456
 
-        https://deine-quelle.example/artikel/Q{id}.html
+Gezählt wird ab 1, Bereiche schließen beide Endpunkte ein. {Suchwert}
+funktioniert genauso. Groß-/Kleinschreibung ist bei Platzhaltern egal.
+Die Beispiele sind URL-Bausteine: vollständige echte HTTP(S)-Adressen eintragen.
+Zu kurze Werte oder ungültige Positionen werden bereits vor dem Start gemeldet.
 
-Das ist nur ein Muster. Bitte die tatsächlichen Adressen eintragen.
-{Suchwert} funktioniert als Platzhalter ebenfalls.
+AUTOMATIK UND AUSSCHLUSSTITEL
 
-Bitte die Vorschau inhaltlich prüfen. Auch eine „nicht gefunden“-Seite
-kann technisch erfolgreich gespeichert werden. Es gibt in dieser Version
-noch keine automatische Erkennung gültiger Artikel.
+Im zweiten Reiter stehen standardmäßig diese zwei Zeilen:
 
-Bestätigte Seiten landen als .html im Ausgabeordner. Dazu kommen eine
-kleine .source.json-Datei mit Herkunftsangaben und ein CSV-Protokoll.
-Vorhandene Dateien werden nicht überschrieben. Gespeicherte Dateien
-lassen sich in der Ergebnisliste per Doppelklick wieder öffnen.
+  ^Wayback Machine
+  404
 
-Die Vorschau verwendet temporäre Dateien. Nach Abschluss oder Abbruch
-zum erneuten Öffnen die bestätigte Datei im Ausgabeordner verwenden.
-Die automatisch geöffneten Browser-Tabs kannst du selbst schließen.
+^ bedeutet „Titel beginnt mit“. Ohne ^ muss der Text irgendwo im Titel
+vorkommen. Groß-/Kleinschreibung ist egal. Weitere Zeichen sind wörtlich gemeint;
+es sind keine regulären Ausdrücke. Eigene Ausschlüsse sind z.B.:
 
-Build und Kernprüfungen wurden durchgeführt. Die Windows-Oberfläche
-und ein vollständiger Browserlauf müssen noch auf Windows praktisch
-getestet werden. Einzelheiten stehen in TEST-REPORT.md.
+  nicht gefunden
+  ^Access Denied
+
+Solche allgemeinen Begriffe können auch nützliche Artikel ausschließen.
+Auch 404 trifft jede Erwähnung, z.B. KB123404. Passe die Liste bei Bedarf an.
+Geprüft wird der vollständige Seitentitel, nicht nur der gekürzte Dateiname.
+
+Ausgeschlossener/fehlender Titel oder Aufnahmefehler -> nächste URL.
+Erster gespeicherter Treffer -> nächster Suchwert, wieder bei Vorlage 1.
+Alle Vorlagen erfolglos -> „Kein Treffer“, danach nächster Suchwert.
+Schreibfehler im Ausgabeordner -> Lauf stoppt.
+„Abbrechen“ stoppt den Lauf; bereits gespeicherte Seiten bleiben erhalten.
+
+Die App prüft keine Fehlertexte im Seiteninhalt. Eine Fehlerseite mit einem
+unauffälligen Titel kann gespeichert werden und braucht eine spätere Sichtung.
+Ein HTTP-404-Status wird nicht separat geprüft; 404 wird im Titel gesucht.
+
+DATEINAMEN
+
+Im dritten Reiter lassen sich Präfix, Suffix und Seitentitel einstellen:
+
+  Präfix + Suchwert + Suffix - Seitentitel.html
+
+Beispiel: Präfix KB, Suchwert 123456, Suffix _DEU:
+
+  KB123456_DEU - Installation des Updates.html
+
+Präfix/Suffix enthalten genau deine Zeichen; _ oder Leerzeichen selbst ergänzen.
+Der Titel wird auf höchstens 100 Zeichen an einer Wortgrenze gekürzt.
+Ein einzelnes überlanges Wort wird nötigenfalls abgeschnitten. Ungültige
+Windows-Dateizeichen werden ersetzt. Bei sehr langen übrigen Bestandteilen
+kann der Titel kürzer werden, damit der gesamte Dateiname passt.
+
+Der vollständige Titel bleibt in den Herkunftsangaben (.source.json) erhalten.
+Die HTML-Kopie selbst bleibt unverändert. Vorhandene Dateien werden nie
+überschrieben: Bei Namensgleichheit wird (2), (3) usw. angehängt.
+
+MANUELLER MODUS
+
+Im zweiten Reiter „Automatisch speichern und weiterlaufen“ abwählen.
+Dann erscheinen die bisherigen Schaltflächen für Vorschau, Übernehmen,
+nächste URL, Wiederholen und Überspringen. Ausschlüsse werden als Hinweis
+angezeigt; die Übernahme entscheidest du in diesem Modus selbst.
+
+PROTOKOLL UND PRÜFUNG
+
+Im Ausgabeordner liegen HTML-Dateien, jeweils eine .source.json und ein
+CSV-Protokoll (Semikolon, UTF-8) mit Versuchen und Ergebnissen.
+Nach einem Abbruch können die fehlenden Werte anhand des Protokolls erneut
+gesammelt werden. Es gibt noch kein automatisches Fortsetzen.
+
+Build und automatisierte Prüfungen sind dokumentiert in TEST-REPORT.md.
+Die neue Windows-Oberfläche und echte Edge-/Chrome-Aufnahmen benötigen noch
+einen praktischen Test auf Windows. Der Browserlauf in der Linux-Testumgebung
+ist durch eine Socket-Einschränkung blockiert.
 
 Vollständiger C#-Quelltext und englische README sind enthalten.
-Bei einem Fehler helfen das CSV-Protokoll und die verwendete URL-Vorlage
-für die nächste Überarbeitung.

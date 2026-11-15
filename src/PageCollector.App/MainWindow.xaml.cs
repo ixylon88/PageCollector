@@ -25,12 +25,18 @@ public partial class MainWindow : Window
     private bool closeRequested;
     private bool autoPreview;
     private bool logWarningShown;
+    private bool automatic;
+    private TitleFilter titleFilter = new(TitleFilter.DefaultRules);
+    private ArchiveNamingOptions naming = new();
 
     public MainWindow()
     {
         InitializeComponent();
         ResultsGrid.ItemsSource = rows;
         LoadSettings();
+        UpdateFilenameExample();
+        UpdatePreviewOption();
+        UpdateButtons();
     }
 
     private async void Start_Click(object sender, RoutedEventArgs e)
@@ -38,6 +44,10 @@ public partial class MainWindow : Window
         try
         {
             var nextSession = new CollectionSession(UrlTemplates.Lines(ValuesBox.Text), UrlTemplates.Lines(TemplatesBox.Text));
+            naming = new(PrefixBox.Text, SuffixBox.Text, IncludeTitleBox.IsChecked == true);
+            ArchiveNaming.Validate(naming);
+            titleFilter = new(ExcludedTitlesBox.Text);
+            automatic = AutomaticBox.IsChecked == true;
             if (!double.TryParse(DelayBox.Text.Replace(',', '.'), NumberStyles.AllowDecimalPoint,
                     CultureInfo.InvariantCulture, out var seconds) || seconds < 0 || seconds > 30)
                 throw new ArgumentException("Bitte eine zusätzliche Wartezeit zwischen 0 und 30 Sekunden eingeben.");
@@ -52,7 +62,7 @@ public partial class MainWindow : Window
             captureOptions = new("", browser, checked((int)(seconds * 1000)));
             previewDirectory = Path.Combine(EngineInstaller.DataDirectory, "previews", Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(previewDirectory);
-            autoPreview = AutoPreviewBox.IsChecked == true;
+            autoPreview = !automatic && AutoPreviewBox.IsChecked == true;
             logWarningShown = false;
             rows.Clear();
             SaveSettings();
@@ -86,8 +96,27 @@ public partial class MainWindow : Window
                 DetailText.Text = exception.Message;
                 return;
             }
-            await CaptureCurrentAsync();
+            if (automatic) await RunAutomaticAsync();
+            else await CaptureCurrentAsync();
         });
+    }
+
+    private async Task RunAutomaticAsync()
+    {
+        var activeSession = session!;
+        var options = captureOptions!;
+        WorkProgress.IsIndeterminate = true;
+        var runner = new AutomaticCollector((candidate, target, token) =>
+            new CaptureRunner().CaptureAsync(candidate, target, options, token));
+        await runner.RunAsync(activeSession, outputDirectory, previewDirectory, titleFilter, naming,
+            progress => Dispatcher.Invoke(() =>
+            {
+                Record(progress.Candidate, progress.Code, progress.Label, progress.Details, progress.FilePath);
+                CurrentUrlBox.Text = progress.Candidate.Url;
+                ProgressText.Text = $"{progress.Candidate.Value} · Wert {progress.Candidate.ValueNumber}/{activeSession.ValueCount} · Vorlage {progress.Candidate.TemplateNumber}/{activeSession.TemplateCount} · {progress.Label}";
+                DetailText.Text = progress.Details;
+            }), cancellation!.Token);
+        FinishSession($"Fertig: {activeSession.AcceptedCount} von {activeSession.ValueCount} Suchwerten automatisch gespeichert; {activeSession.ValueCount - activeSession.AcceptedCount} ohne Treffer.");
     }
 
     private async Task CaptureCurrentAsync()
@@ -111,9 +140,11 @@ public partial class MainWindow : Window
             var target = Path.Combine(previewDirectory, Guid.NewGuid().ToString("N") + ".html");
             await Task.Delay(700, cancellation!.Token);
             capture = await new CaptureRunner().CaptureAsync(current, target, captureOptions!, cancellation.Token);
-            Record(current, "AwaitingApproval", "Bitte prüfen", capture.Title);
+            var title = string.IsNullOrWhiteSpace(capture.Title) ? "(ohne Titel)" : capture.Title;
+            var rejection = titleFilter.RejectionReason(capture.Title);
+            Record(current, "AwaitingApproval", "Bitte prüfen", rejection ?? title);
             ProgressText.Text = $"{current.Value} · Vorschau prüfen · Vorlage {current.TemplateNumber}/{session.TemplateCount}";
-            DetailText.Text = capture.Title + " — Passender Inhalt? „Übernehmen & weiter“. Sonst „Nächste URL“.";
+            DetailText.Text = (rejection ?? title) + " — Manuell: „Übernehmen & weiter“ oder „Nächste URL“.";
             if (autoPreview) OpenPath(capture.FilePath);
         }
         catch (OperationCanceledException) { throw; }
@@ -136,7 +167,7 @@ public partial class MainWindow : Window
             try
             {
                 ProgressText.Text = "Bestätigte Seite speichern…";
-                saved = await ArchiveStore.SaveAsync(outputDirectory, current, capture, cancellation!.Token);
+                saved = await ArchiveStore.SaveAsync(outputDirectory, current, capture, cancellation!.Token, naming);
             }
             catch (OperationCanceledException) { throw; }
             catch (Exception exception)
@@ -182,7 +213,7 @@ public partial class MainWindow : Window
         cancellation?.Cancel();
         CancelButton.IsEnabled = false;
         if (busy) ProgressText.Text = "Wird abgebrochen…";
-        else FinishSession("Abgebrochen. Bereits bestätigte Seiten bleiben gespeichert.");
+        else FinishSession("Abgebrochen. Bereits gespeicherte Seiten bleiben erhalten.");
     }
 
     private async Task RunOperationAsync(Func<Task> operation)
@@ -194,11 +225,11 @@ public partial class MainWindow : Window
         catch (OperationCanceledException)
         {
             if (session is { IsComplete: false }) Record(session.Current, "Cancelled", "Abgebrochen", "Aufnahme oder Speichern abgebrochen.");
-            FinishSession("Abgebrochen. Bereits bestätigte Seiten bleiben gespeichert.");
+            FinishSession("Abgebrochen. Bereits gespeicherte Seiten bleiben erhalten.");
         }
         catch (Exception exception)
         {
-            FinishSession("Vorgang beendet. Bereits bestätigte Seiten bleiben gespeichert.");
+            FinishSession("Vorgang beendet. Bereits gespeicherte Seiten bleiben erhalten.");
             ShowError(exception.Message);
         }
         finally
@@ -230,7 +261,7 @@ public partial class MainWindow : Window
         previewDirectory = "";
         ProgressText.Text = message;
         CurrentUrlBox.Text = "";
-        DetailText.Text = "Bestätigte Dateien lassen sich per Doppelklick in der Ergebnisliste öffnen.";
+        DetailText.Text = "Gespeicherte Dateien lassen sich per Doppelklick in der Ergebnisliste öffnen.";
         UpdateButtons();
     }
 
@@ -242,11 +273,15 @@ public partial class MainWindow : Window
         PreviewButton.IsEnabled = AcceptButton.IsEnabled = running && !busy && capture is not null;
         NextButton.IsEnabled = RetryButton.IsEnabled = SkipButton.IsEnabled = running && !busy;
         CancelButton.IsEnabled = running && cancellation?.IsCancellationRequested != true;
+        UpdatePreviewOption();
+        var manualVisibility = AutomaticBox.IsChecked == true ? Visibility.Collapsed : Visibility.Visible;
+        foreach (var button in new[] { PreviewButton, AcceptButton, NextButton, RetryButton, SkipButton })
+            button.Visibility = manualVisibility;
     }
 
     private void Record(Candidate candidate, string code, string label, string details, string file = "")
     {
-        rows.Add(new(candidate.Value, label, details, file));
+        rows.Add(new(candidate.Value, label, file.Length > 0 ? file : details, file));
         ResultsGrid.ScrollIntoView(rows[^1]);
         try { log?.Append(candidate, code, file, details); }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
@@ -297,9 +332,26 @@ public partial class MainWindow : Window
     private void Demo_Click(object sender, RoutedEventArgs e)
     {
         ValuesBox.Text = "123456\n654321";
-        TemplatesBox.Text = "https://example.com/?article={id}";
+        TemplatesBox.Text = "https://example.com/?article={id}&group={id:1-3}";
         ProgressText.Text = "Demo geladen: zwei Suchwerte auf example.com.";
-        DetailText.Text = "Diese Vorlage dient nur dem Funktionstest. Für echte Treffer eigene URL-Vorlagen eintragen.";
+        DetailText.Text = "Automatik ist standardmäßig aktiv. Diese Vorlage dient nur dem Funktionstest; für echte Treffer eigene URL-Vorlagen eintragen.";
+    }
+
+    private void Mode_Changed(object sender, RoutedEventArgs e)
+    {
+        if (StartButton is not null) UpdateButtons();
+        else UpdatePreviewOption();
+    }
+    private void UpdatePreviewOption()
+    {
+        if (AutoPreviewBox is not null) AutoPreviewBox.IsEnabled = AutomaticBox.IsChecked != true;
+    }
+    private void Naming_Changed(object sender, RoutedEventArgs e) => UpdateFilenameExample();
+    private void UpdateFilenameExample()
+    {
+        if (FilenameExampleText is null || PrefixBox is null || SuffixBox is null || IncludeTitleBox is null) return;
+        FilenameExampleText.Text = "Beispiel: " + ArchiveNaming.BuildStem("123456", "Beispiel Seitentitel",
+            new(PrefixBox.Text, SuffixBox.Text, IncludeTitleBox.IsChecked == true)) + ".html";
     }
 
     private static string ResolveBrowser(string configured)
@@ -327,10 +379,11 @@ public partial class MainWindow : Window
     private void LoadSettings()
     {
         OutputBox.Text = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "PageCollector");
+        ExcludedTitlesBox.Text = TitleFilter.DefaultRules;
         try
         {
             if (!File.Exists(SettingsPath)) return;
-            var settings = JsonSerializer.Deserialize<UserSettings>(File.ReadAllText(SettingsPath));
+            var settings = JsonSerializer.Deserialize<CollectorSettings>(File.ReadAllText(SettingsPath));
             if (settings is null) return;
             ValuesBox.Text = settings.Values;
             TemplatesBox.Text = settings.Templates;
@@ -338,6 +391,11 @@ public partial class MainWindow : Window
             BrowserBox.Text = settings.BrowserPath;
             DelayBox.Text = settings.DelaySeconds;
             AutoPreviewBox.IsChecked = settings.AutoPreview;
+            AutomaticBox.IsChecked = settings.Automatic;
+            ExcludedTitlesBox.Text = settings.ExcludedTitles ?? TitleFilter.DefaultRules;
+            PrefixBox.Text = ArchiveNaming.Truncate(settings.Prefix ?? "", 40);
+            SuffixBox.Text = ArchiveNaming.Truncate(settings.Suffix ?? "", 40);
+            IncludeTitleBox.IsChecked = settings.IncludeTitle;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException)
         { DetailText.Text = "Einstellungen konnten nicht gelesen werden; Standardwerte werden verwendet."; }
@@ -348,8 +406,10 @@ public partial class MainWindow : Window
         {
             Directory.CreateDirectory(EngineInstaller.DataDirectory);
             var temporary = SettingsPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
-            File.WriteAllText(temporary, JsonSerializer.Serialize(new UserSettings(ValuesBox.Text, TemplatesBox.Text,
-                OutputBox.Text, BrowserBox.Text, DelayBox.Text, AutoPreviewBox.IsChecked == true), new JsonSerializerOptions { WriteIndented = true }));
+            File.WriteAllText(temporary, JsonSerializer.Serialize(new CollectorSettings(ValuesBox.Text, TemplatesBox.Text,
+                OutputBox.Text, BrowserBox.Text, DelayBox.Text, AutoPreviewBox.IsChecked == true,
+                AutomaticBox.IsChecked == true, ExcludedTitlesBox.Text, PrefixBox.Text, SuffixBox.Text,
+                IncludeTitleBox.IsChecked == true), new JsonSerializerOptions { WriteIndented = true }));
             File.Move(temporary, SettingsPath, overwrite: true);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
@@ -370,6 +430,4 @@ public partial class MainWindow : Window
     private void ShowError(string message) => MessageBox.Show(this, message, "PageCollector", MessageBoxButton.OK, MessageBoxImage.Information);
 
     private sealed record ResultRow(string Value, string Status, string Details, string FilePath = "");
-    private sealed record UserSettings(string Values, string Templates, string OutputDirectory, string BrowserPath,
-        string DelaySeconds, bool AutoPreview);
 }

@@ -1,88 +1,164 @@
-# PageCollector 0.1
+# PageCollector 0.2
 
-A small Windows application for trying ordered URL templates and keeping the first **manually approved** page for each search value. The application is written in C# / WPF. SingleFile CLI performs the webpage capture.
+A small C# / WPF application for Windows that tries URL templates in order and saves the first captured page whose title passes an editable exclusion list. SingleFile CLI captures the rendered page as one HTML file. Manual review remains available.
 
 ## Quick start
 
-1. Extract the entire ZIP to a writable folder.
-2. Run `Start.cmd` (or `app/PageCollector.exe`).
-3. Click **Demo laden**, then **Starten**. The demo uses `example.com` and two sample values; it is only a functional test.
-4. On the first run, the application downloads SingleFile CLI 2.26.0 from its official GitHub release (about 82 MB) and verifies its published SHA-256 digest.
-5. The saved candidate opens in the default browser. Return to PageCollector and choose **Übernehmen & weiter** to retain it or **Nächste URL** to try the next template.
+1. Extract the entire ZIP and run `Start.cmd` (or `app/PageCollector.exe`).
+2. Enter search values and URL templates in the first tab, or use **Demo laden** for a functional test with two values on `example.com`.
+3. The **Automatik und Ausschlusstitel** tab enables automatic collection by default. Review its title exclusions before a real collection.
+4. Optionally set a filename prefix and suffix in **Dateinamen**. Appending the page title is enabled by default.
+5. Select an output directory and click **Starten**. The application finishes each value before moving to the next; no browser tabs or approval prompts are opened in automatic mode.
+6. Open saved results by double-clicking their rows, or use **Ausgabeordner öffnen**.
 
-The packaged application targets **Windows x64** and includes its .NET runtime. No separate .NET installation, administrative rights or PowerShell script is required to run the package. Microsoft Edge or Google Chrome must be installed for capture. The default browser used for the preview may also be Firefox.
+The package targets **Windows x64** and includes its .NET runtime. Edge or Chrome must be installed. The first run downloads the pinned SingleFile CLI 2.26.0 helper (about 82 MB) from its official GitHub release and verifies its SHA-256 digest. An already downloaded, verified helper is reused. A preview can be opened in any default browser, including Firefox.
 
-See [START-HIER.txt](START-HIER.txt) for the short German walkthrough and [TEST-REPORT.md](TEST-REPORT.md) for the exact verification limits of this prototype.
+For the German walkthrough, see [START-HIER.txt](START-HIER.txt). Build and test details are in [TEST-REPORT.md](TEST-REPORT.md).
 
-## Inputs
+## Changes from 0.1
 
-Enter one search value per line. Values can also be loaded from a UTF-8 TXT file or pasted as a column from a spreadsheet. The prototype does not parse multi-column CSV input. Blank lines are ignored; duplicate values are retained.
+- One-based character selections, inclusive ranges and lists inside URL placeholders.
+- Automatic collection with editable title exclusions; manual review remains selectable.
+- Configurable filename prefix and suffix, with an optional page title capped at 100 characters.
+- Full title extraction even after large embedded resources; the full title is retained in provenance.
+- Automatic failures, title rejections and exhausted values are logged; temporary captures are removed after every attempt.
+- Existing 0.1 settings are retained. Missing new settings default to automatic collection, the two standard exclusions, empty affixes and title filenames.
 
-Enter one URL template per line, in priority order. `{id}` and `{Suchwert}` are equivalent and case-insensitive. Examples below are schematic, not real archive addresses:
+## Search values and URL templates
+
+Enter one value per line, paste a column, or load a UTF-8 TXT file. Blank lines are ignored; duplicates and leading zeros are retained. Multi-column CSV input is not parsed.
+
+Enter one HTTP(S) URL template per line, in priority order. `{id}` and `{Suchwert}` are equivalent and case-insensitive, including indexed forms. Positions start at **1** and range endpoints are inclusive.
+
+For the value `123456`:
+
+| Placeholder | Result |
+| --- | --- |
+| `{id}` | `123456` |
+| `{id:1-3}` | `123` |
+| `{id:1,2,3}` | `123` |
+| `{id:4}` | `4` |
+| `{id:5-6}` | `56` |
+| `{id:3,1,3}` | `313` |
+| `{Suchwert:1-3}` | `123` |
+
+The following are schematic examples; replace their hosts with real source addresses:
 
 ```text
-https://archive.example/kb/Q{id}.html
-https://archive.example/articles/{id}/
-https://archive.example/search?article={id}
+https://www.testurl.com/asdf{id:1-3}/{id:4}/{id:5-6}
+https://www.testurl2.com/ululu{id:1-3}/{id}
 ```
 
-With the value `123456`, the first template becomes `https://archive.example/kb/Q123456.html`. The substituted value is URL-encoded; the surrounding path and query remain intact. Templates must use HTTP or HTTPS. The placeholder belongs in the path or query, not the host name. Existing Wayback replay URLs can be used as templates; this prototype does not look up timestamps through the Wayback API.
+They expand to:
 
-Real source URLs were not provided with the initial request. Replace the demo template with the actual source templates before collecting articles.
+```text
+https://www.testurl.com/asdf123/4/56
+https://www.testurl2.com/ululu123/123456
+```
 
-## Review and decisions
+Lists may mix individual positions and ranges, for example `{id:1-3,5,6}`. Selection happens before URL encoding. Each inserted selection is encoded separately; the template's separators remain intact. Unicode text elements stay together. Placeholders belong in the path or query, not the host or URI scheme.
+
+Every template is validated against every supplied value before the run. Position 0, descending ranges, unknown placeholders and out-of-range selections produce a clear error instead of silently generating a wrong URL. A too-short value therefore needs correcting or collecting in a separate run with suitable templates.
+
+Existing Wayback replay URLs can be used as templates. PageCollector does not query the Wayback API to find snapshot timestamps.
+
+## Automatic title rules
+
+The default list contains:
+
+```text
+^Wayback Machine
+404
+```
+
+One rule goes on each line. Empty lines are ignored. Matching ignores case and normalizes whitespace, using the **full original title**, before filename shortening.
+
+| Rule | Meaning |
+| --- | --- |
+| `^Wayback Machine` | Reject titles starting with `Wayback Machine`. |
+| `404` | Reject titles containing the literal text `404` anywhere. |
+| `nicht gefunden` | Optional: reject titles containing this text. |
+| `^Access Denied` | Optional: reject titles starting with this text. |
+
+Only the leading `^` has a special meaning; other characters are literal, not regular expressions or wildcards. The rules apply globally to all templates. Remove all lines to disable these exclusions; a page without a title is still not automatically accepted.
+
+Broad exclusions can also reject useful articles. For example, `404` matches a title containing `KB123404` or an article about HTTP 404. Likewise, an article about a "file not found" error may be useful, so that phrase is deliberately **not** a default exclusion. Adjust the list for the source material.
+
+For each value, the automatic runner:
+
+1. Captures the first URL to a temporary file.
+2. On capture failure or timeout, logs the error and tries the next template.
+3. On an excluded or missing title, discards the temporary capture and tries the next template.
+4. On a passing title, saves the HTML and provenance. Only successful storage ends the search for this value.
+5. Starts again at the first template for the next value. When all templates fail, logs **Kein Treffer** and continues.
+
+A destination write failure stops the run. **Abbrechen** cancels capture or storage and preserves all previously saved results. There is a short delay between attempts, but no automatic retry of a failed URL in this version. Use the log to collect missing values again.
+
+Title checks are a heuristic, not a content or HTTP-status validator. A saved error page whose title passes the list can still be accepted. Errors mentioned only in the body, login pages and robot checks may require later inspection. HTTP 404 status is not independently evaluated; the default `404` rule checks the title.
+
+## Manual review
+
+Clear **Automatisch speichern und weiterlaufen** to use the original review flow. Manual buttons appear; the optional automatic preview setting applies only in this mode. Title rules are shown as hints and do not prevent manual acceptance.
 
 | Button | Effect |
 | --- | --- |
-| Starten | Start a new run with a snapshot of the current inputs. |
-| Vorschau öffnen | Open the currently captured HTML file again. |
-| Übernehmen & weiter | Save the approved HTML and provenance, then start the first template for the next value. |
-| Nächste URL | Reject the current candidate and try the next template. After the last template, continue with the next value. |
-| Erneut versuchen | Capture the same URL again, for example after a timeout. |
-| Wert überspringen | Skip all remaining templates for the current search value. |
-| Abbrechen | Stop the current capture/run. Already approved files remain. |
+| Vorschau öffnen | Open the currently captured temporary HTML again. |
+| Übernehmen & weiter | Save that captured file, then start the next value. |
+| Nächste URL | Try the next template; after the last template, move to the next value. |
+| Erneut versuchen | Capture the same URL again. |
+| Wert überspringen | Skip all remaining templates for this value. |
+| Abbrechen | Stop the run; previously saved files remain. |
 
-A captured page is **not** automatically considered a valid article. A 404 page, a soft error page with HTTP 200, an archive calendar, a login screen or a robot check can also be captured. Check the page content before accepting it. A process failure or timeout leaves the current source selected; the application does not silently move to a lower-priority source.
+A capture failure in manual mode keeps the current source selected. Previewing does not visit the live site again. Browser tabs are not automatically closed. Temporary preview files are deleted at session completion; reopen the permanent saved copy afterwards.
 
-The preview is the already saved HTML, not a second live visit. Acceptance copies that same file without recapturing the page. Preview tabs are temporary; reopen accepted files by double-clicking their `Gespeichert` row or from the output folder. The prototype opens a separate browser tab for each preview and does not close those tabs automatically.
+## Filenames and output
 
-## Output
-
-For an approved value, the output directory contains:
+The filename layout is:
 
 ```text
-123456.html
-123456.source.json
+<prefix><search value><suffix> - <page title>.html
+```
+
+For prefix `KB`, value `123456`, suffix `_DEU` and title `Installing the update`:
+
+```text
+KB123456_DEU - Installing the update.html
+KB123456_DEU - Installing the update.source.json
 session-<timestamp>-<unique-id>.csv
 ```
 
-The HTML is the SingleFile archive. The JSON sidecar records the search value, template, requested URL, title, capture/approval timestamps and SHA-256 of the saved HTML. `requestedUrl` is deliberately not labelled as the final redirected URL. SingleFile also normally embeds its own source information in the HTML.
+Affixes are literal text; separators such as `_` or spaces are entered explicitly. The suffix follows the search value, before the optional title. The title option removes both ` - ` and the title when disabled. A live example is shown in the settings tab.
 
-The session CSV uses semicolons and UTF-8 with BOM for convenient opening in Excel. It records attempts, approvals, rejections, retries, failures and skipped values. Existing files are never overwritten: repeated or colliding values produce names such as `123456 (2).html`. Unsafe Windows filename characters are replaced.
+- The filename title is at most **100 characters**, shortened at the last complete word. If a single word exceeds the limit, it is cut at a Unicode text-element boundary.
+- Windows-forbidden filename characters are replaced with underscores; trailing spaces/dots and reserved device names are handled safely.
+- Each affix may contain up to 40 characters. Very long search values are shortened to 80 characters in filenames. The combined filename stem is bounded to leave room for extensions and collision counters; this may shorten the title further.
+- The **full title and search value** remain in `.source.json`, and the captured HTML bytes are unchanged.
+- Existing files are never overwritten. Collisions produce `... (2).html`, with a matching sidecar, then `(3)`, etc.
 
-Inputs and settings are retained in `%LOCALAPPDATA%\PageCollector\settings.json`. The verified helper is stored in `%LOCALAPPDATA%\PageCollector\tools`. Temporary previews are kept in an application-owned session folder and removed at normal session completion/cancellation. A crash may leave that session's previews behind.
+The JSON sidecar records the value, template, requested URL, full title, capture/acceptance timestamps, saved filename and SHA-256. `approval` is `automatic-title-filter` or `manual`. `requestedUrl` is not labelled as the final redirected URL. SingleFile normally also embeds source information in the HTML.
 
-## Capture behaviour and current limits
+The semicolon-separated UTF-8 CSV (with BOM for Excel) records attempted URLs, title rejections, capture/save errors, accepted files and values with no accepted candidate. Settings are retained in `%LOCALAPPDATA%\PageCollector\settings.json`; the helper is in `%LOCALAPPDATA%\PageCollector\tools`. Existing settings from 0.1 are read from the same location.
 
-- A separate temporary Edge/Chrome profile is used. Existing browser logins and Firefox extensions are not reused.
-- The capture uses a desktop viewport of 1440 × 1000 pixels, loads deferred content, embeds available resources and removes page scripts from the saved copy. Audio and video are excluded.
-- The additional wait is configurable from 0 to 30 seconds (default 1.5). Loading and capture have their own 60-second limits; PageCollector ends the whole helper process after 150 seconds.
-- Formatting should remain close to the rendered page, but missing archive resources, cookie banners, interactive widgets and robot checks still require judgment. This is a readable snapshot, not a complete functioning website.
-- The first version is entirely manual at the approval step. It has no per-site validity rules, automatic retries, pause/resume checkpoint or automatic skipping of existing output.
-- Changing values, templates, browser path or timing requires stopping the run. After restarting, use the CSV to select remaining values; rerunning an accepted value creates an additional file rather than overwriting it.
-- Windows ARM64 is not a separately built/tested target in this package.
+## Capture behaviour and limits
 
-## Build from source
+- A fresh browser profile is used; existing browser logins and extensions are not reused.
+- The viewport is 1440 × 1000 pixels. Available resources and deferred content are captured; scripts are removed from the saved copy. Audio/video are excluded.
+- Additional wait: 0–30 seconds (default 1.5). Loading and capture each have a 60-second limit; the entire helper process has a 150-second limit.
+- This is a readable snapshot. Missing archive resources and server-side interactions cannot be restored.
+- Inputs/settings cannot change during a run. There is no pause/resume checkpoint or automatic skip of existing archives. Rerunning a value creates an additional file.
+- Normal completion/cancellation removes session previews. A crash may leave temporary files behind.
+- Windows ARM64 is not a separately built or tested target.
 
-Install a .NET 10 SDK on Windows. Then run:
+## Build and verification
+
+Install a .NET 10 SDK on Windows, then run:
 
 ```bat
 Build.cmd
+Verify.cmd
 ```
 
-This publishes a self-contained Windows x64 build to `dist\win-x64`. `Run-Source.cmd` builds and runs directly from source. `Verify.cmd` runs the platform-independent checks. The scripts use CMD and the .NET CLI, not PowerShell.
-
-Equivalent commands:
+`Build.cmd` publishes a self-contained build to `dist\win-x64`; `Run-Source.cmd` runs from source. Equivalent commands:
 
 ```text
 dotnet build src/PageCollector.App/PageCollector.App.csproj -c Release
@@ -90,15 +166,15 @@ dotnet run --project tests/PageCollector.Checks -c Release
 dotnet publish src/PageCollector.App/PageCollector.App.csproj -c Release -r win-x64 --self-contained true -o dist/win-x64
 ```
 
-The code has no NuGet dependencies beyond the framework. UI event handling stays in the WPF application; queue progression, process management, storage and helper download are in `PageCollector.Core`. No dependency-injection container or application framework is involved.
+There are no application NuGet dependencies beyond the framework. `PageCollector.Core` contains URL expansion, title reading/filtering, sequential collection, storage and process/download handling. The WPF application owns the UI and settings. See [TEST-REPORT.md](TEST-REPORT.md) for automated checks and the optional local browser fixture.
 
 ## Troubleshooting
 
-- **Capture fails:** read the details in the session CSV. Use **Erneut versuchen** for a transient error or **Nächste URL** to change source.
-- **Browser not found:** select `msedge.exe` or `chrome.exe` using **Auswählen…**. Leave the field empty for automatic detection.
-- **Helper cannot download:** verify GitHub is reachable. Alternatively download the pinned [official Windows executable](https://github.com/gildas-lormeau/single-file-cli/releases/download/v2.26.0/single-file.exe) and place it at `%LOCALAPPDATA%\PageCollector\tools\single-file-2.26.0.exe`. The application still verifies the hash before using it.
-- **Windows blocks this unsigned prototype:** build locally from the included source; the package is not code-signed.
-- **Incomplete text:** increase the additional wait before starting a new run. Content requiring login or manual page interaction is outside this first version's capture flow.
+- **No accepted page:** check the session CSV for title exclusions, timeouts or capture errors. Narrow overly broad rules or try the affected value in manual mode.
+- **Browser not found:** select `msedge.exe` or `chrome.exe`, or leave the browser field empty for automatic detection.
+- **Incomplete content:** increase the additional wait before starting again.
+- **Helper cannot download:** check GitHub access, or download the pinned [official Windows executable](https://github.com/gildas-lormeau/single-file-cli/releases/download/v2.26.0/single-file.exe) to `%LOCALAPPDATA%\PageCollector\tools\single-file-2.26.0.exe`. Its hash is still checked before use.
+- **Windows blocks the unsigned build:** the included source can be built locally.
 
 ## Third-party projects
 

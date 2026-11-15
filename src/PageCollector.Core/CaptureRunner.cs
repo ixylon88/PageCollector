@@ -1,9 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
-using System.Net;
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 
 namespace PageCollector.Core;
 
@@ -44,7 +42,7 @@ public sealed class CaptureRunner
             await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false);
             await Task.WhenAll(stdout, stderr).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
-            throw new TimeoutException($"Die Aufnahme wurde nach {options.TimeoutSeconds} Sekunden beendet. Erneut versuchen oder nächste URL wählen.");
+            throw new TimeoutException($"Die Aufnahme wurde nach {options.TimeoutSeconds} Sekunden beendet.");
         }
         var diagnostics = (await stderr.ConfigureAwait(false)) + "\n" + (await stdout.ConfigureAwait(false));
         cancellationToken.ThrowIfCancellationRequested();
@@ -52,16 +50,7 @@ public sealed class CaptureRunner
             throw new IOException($"SingleFile meldet Fehler {process.ExitCode}. {diagnostics.Trim()}");
         if (!File.Exists(targetPath) || new FileInfo(targetPath).Length == 0)
             throw new IOException("Die Speicherhilfe hat keine HTML-Datei erzeugt.");
-        var buffer = new char[131072];
-        using var reader = new StreamReader(targetPath, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
-        var count = await reader.ReadBlockAsync(buffer.AsMemory(), cancellationToken).ConfigureAwait(false);
-        var prefix = new string(buffer, 0, count);
-        if (!Regex.IsMatch(prefix, @"<(?:html|!doctype|head|body)\b", RegexOptions.IgnoreCase))
-            throw new IOException("Die erzeugte Datei scheint kein HTML-Dokument zu sein.");
-        var match = Regex.Match(prefix, @"<title\b[^>]*>(.*?)</title\s*>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
-        var title = match.Success ? WebUtility.HtmlDecode(match.Groups[1].Value).Trim() : "(ohne Titel)";
-        title = Regex.Replace(title, @"\s+", " ");
-        if (title.Length > 500) title = title[..500];
+        var title = await HtmlTitleReader.ReadAsync(targetPath, cancellationToken).ConfigureAwait(false);
         return new(targetPath, title, DateTimeOffset.UtcNow);
     }
 

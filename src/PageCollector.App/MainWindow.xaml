@@ -1,14 +1,14 @@
 <Window x:Class="PageCollector.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="PageCollector · Entwurf 0.1" Width="1160" Height="880"
+        Title="PageCollector · 0.2" Width="1160" Height="900"
         MinWidth="990" MinHeight="760" WindowStartupLocation="CenterScreen"
         Background="#F5F6F8" FontFamily="Segoe UI" FontSize="13"
         Closing="Window_Closing">
     <Grid Margin="18">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="2*" MinHeight="170" MaxHeight="280" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -19,17 +19,19 @@
             <Button x:Name="DemoButton" Content="Demo laden" DockPanel.Dock="Right" Click="Demo_Click" />
             <StackPanel>
                 <TextBlock Text="PageCollector" FontSize="25" FontWeight="SemiBold" />
-                <TextBlock Text="URL-Vorlagen ausprobieren · gespeicherte Seite prüfen · ersten passenden Treffer behalten"
+                <TextBlock Text="URL-Vorlagen der Reihe nach prüfen · Titel filtern · ersten Treffer speichern"
                            Foreground="#4F5663" />
             </StackPanel>
         </DockPanel>
-        <Grid Grid.Row="1" x:Name="InputsPanel" Margin="0,0,0,8">
+        <TabControl Grid.Row="1" x:Name="InputsPanel" Margin="0,0,0,8">
+          <TabItem Header="1. Suchwerte und URL-Vorlagen">
+           <Grid Margin="9">
             <Grid.ColumnDefinitions><ColumnDefinition Width="1*"/><ColumnDefinition Width="2*"/></Grid.ColumnDefinitions>
             <GroupBox Header="1. Suchwerte — ein Wert pro Zeile" Margin="0,0,10,0">
                 <DockPanel>
                     <Button Content="TXT-Datei laden…" DockPanel.Dock="Bottom" HorizontalAlignment="Left"
                             Margin="0,6,0,0" Click="LoadValues_Click" />
-                    <TextBox x:Name="ValuesBox" Height="128" AcceptsReturn="True" AcceptsTab="False"
+                    <TextBox x:Name="ValuesBox" AcceptsReturn="True" AcceptsTab="False"
                              VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
                              VerticalContentAlignment="Top" FontFamily="Consolas" />
                 </DockPanel>
@@ -37,14 +39,45 @@
             <GroupBox Grid.Column="1" Header="2. URL-Vorlagen — erste Zeile hat höchste Priorität">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Bottom" Margin="0,6,0,3" Foreground="#4F5663"
-                               Text="Platzhalter: {id} oder {Suchwert} · Beispiel: https://example.com/?article={id}" />
-                    <TextBox x:Name="TemplatesBox" Height="128" AcceptsReturn="True" AcceptsTab="False"
+                               TextWrapping="Wrap" Text="Ab Position 1: {id:1-3}/{id:4}/{id:5-6} → 123/4/56 · auch {id:1,2,3} und {id} möglich" />
+                    <TextBox x:Name="TemplatesBox" AcceptsReturn="True" AcceptsTab="False"
                              VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
                              VerticalContentAlignment="Top" FontFamily="Consolas" />
                 </DockPanel>
             </GroupBox>
-        </Grid>
-        <GroupBox Grid.Row="2" x:Name="SettingsPanel" Header="3. Ablage und Aufnahme" Margin="0,0,0,10">
+           </Grid>
+          </TabItem>
+          <TabItem Header="2. Automatik und Ausschlusstitel">
+            <ScrollViewer VerticalScrollBarVisibility="Auto"><Grid Margin="18,12">
+              <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+              <CheckBox x:Name="AutomaticBox" IsChecked="True" FontWeight="SemiBold"
+                        Content="Automatisch speichern und weiterlaufen" Checked="Mode_Changed" Unchecked="Mode_Changed" />
+              <TextBlock Grid.Row="1" Margin="0,8" TextWrapping="Wrap"
+                         Text="Ausschlüsse: ein Suchtext pro Zeile. ^ bedeutet „Titel beginnt mit“, sonst „Titel enthält“. Groß-/Kleinschreibung ist egal." />
+              <TextBox Grid.Row="2" x:Name="ExcludedTitlesBox" AcceptsReturn="True" Height="88" VerticalContentAlignment="Top"
+                       VerticalScrollBarVisibility="Auto" FontFamily="Consolas" />
+              <TextBlock Grid.Row="3" Margin="0,8,0,0" TextWrapping="Wrap" Foreground="#4F5663"
+                         Text="Standard: ^Wayback Machine und 404. Titel ohne Ausschluss werden gespeichert. Fehler nur im Seiteninhalt werden nicht erkannt. Ohne Häkchen: jede Vorschau manuell bestätigen." />
+            </Grid></ScrollViewer>
+          </TabItem>
+          <TabItem Header="3. Dateinamen">
+            <ScrollViewer VerticalScrollBarVisibility="Auto"><Grid Margin="18,12">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="90"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+              <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+              <TextBlock Grid.ColumnSpan="2" Margin="0,0,0,10" FontWeight="SemiBold" Text="Präfix + Suchwert + Suffix - Seitentitel.html" />
+              <TextBlock Grid.Row="1" Text="Präfix" VerticalAlignment="Center" />
+              <TextBox Grid.Row="1" Grid.Column="1" x:Name="PrefixBox" MaxLength="40" Margin="0,0,0,6" TextChanged="Naming_Changed" />
+              <TextBlock Grid.Row="2" Text="Suffix" VerticalAlignment="Center" />
+              <TextBox Grid.Row="2" Grid.Column="1" x:Name="SuffixBox" MaxLength="40" Margin="0,0,0,8" TextChanged="Naming_Changed" />
+              <CheckBox Grid.Row="3" Grid.ColumnSpan="2" x:Name="IncludeTitleBox" IsChecked="True" Content="Seitentitel mit „ - “ anhängen (höchstens 100 Zeichen)"
+                        Checked="Naming_Changed" Unchecked="Naming_Changed" />
+              <TextBlock Grid.Row="4" Grid.ColumnSpan="2" x:Name="FilenameExampleText" Margin="0,10,0,6" FontFamily="Consolas" TextWrapping="Wrap" />
+              <TextBlock Grid.Row="5" Grid.ColumnSpan="2" TextWrapping="Wrap" Foreground="#4F5663"
+                         Text="Lange Titel werden an einer Wortgrenze gekürzt. Ungültige Dateizeichen werden ersetzt. Der vollständige Titel bleibt in der .source.json erhalten. Vorhandene Dateien werden nicht überschrieben." />
+            </Grid></ScrollViewer>
+          </TabItem>
+        </TabControl>
+        <GroupBox Grid.Row="2" x:Name="SettingsPanel" Header="Ablage und Aufnahme" Margin="0,0,0,10">
             <Grid>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="110"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
@@ -58,7 +91,7 @@
                 <WrapPanel Grid.Row="2" Grid.ColumnSpan="3" VerticalAlignment="Center">
                     <TextBlock Text="Zusätzlich warten (Sekunden):" VerticalAlignment="Center" Margin="0,0,8,0" />
                     <TextBox x:Name="DelayBox" Text="1,5" Width="55" Margin="0,0,18,0" />
-                    <CheckBox x:Name="AutoPreviewBox" Content="Vorschau automatisch im Standardbrowser öffnen"
+                    <CheckBox x:Name="AutoPreviewBox" Content="Im manuellen Modus: Vorschau automatisch öffnen"
                               IsChecked="True" VerticalAlignment="Center" />
                 </WrapPanel>
             </Grid>
@@ -95,6 +128,6 @@
             </DataGrid.Columns>
         </DataGrid>
         <TextBlock Grid.Row="6" Margin="0,9,0,0" Foreground="#4F5663" TextWrapping="Wrap"
-                   Text="Bitte den Inhalt der Vorschau prüfen: Auch Fehlerseiten lassen sich speichern. Nur „Übernehmen“ bestätigt einen Treffer." />
+                   Text="Automatik: Die erste gespeicherte Seite mit zulässigem Titel beendet die Suche für diesen Wert. Inhaltliche Fehler können eine spätere Sichtung erfordern." />
     </Grid>
 </Window>

@@ -19,7 +19,7 @@ public static class EngineInstaller
         try
         {
             using var client = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
-            client.DefaultRequestHeaders.UserAgent.ParseAdd("PageCollector/0.1");
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("PageCollector/0.2");
             using var response = await client.GetAsync(DownloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
             var length = response.Content.Headers.ContentLength ?? DownloadBytes;
