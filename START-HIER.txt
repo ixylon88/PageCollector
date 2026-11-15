@@ -5,9 +5,14 @@ AUS DEM REPOSITORY STARTEN
 
 1. Unter Windows ein .NET-10-SDK installieren und PageCollector.sln öffnen.
 2. In PowerShell im Repo: .\Verify.ps1
-3. Danach: .\Build.ps1 -Publish und .\Start.cmd
+3. Danach eine Publish-Variante wählen:
+   .\Build.ps1 -Publish                 (framework-dependent)
+   .\Build.ps1 -Publish -SelfContained  (mit .NET-Runtime)
+4. PageCollector.exe im passenden Ausgabeordner starten:
+   dist\win-x64 bzw. dist\win-x64_self-contained.
+   Start.cmd bevorzugt dist\win-x64 und nutzt sonst die zweite Variante.
 
-Alternativ das Artefakt PageCollector-Windows-x64 aus einem erfolgreichen
+Alternativ das Artefakt PageCollector-win-x64-self-contained aus einem erfolgreichen
 GitHub-Actions-Lauf vollständig entpacken und PageCollector.exe starten.
 Zum Funktionstest „Demo laden“, danach „Starten“ wählen.
 
@@ -16,9 +21,15 @@ NEU: Automatik und Seitentitel im Dateinamen sind standardmäßig aktiv.
 Der Automatiklauf öffnet keine Vorschau und verlangt keine Bestätigung.
 Gespeicherte Dateien lassen sich per Doppelklick in der Ergebnisliste öffnen.
 
-Edge oder Chrome muss installiert sein. Beim veröffentlichten Build ist keine zusätzliche
-.NET-Installation nötig; für den Quelltext wird das SDK benötigt. Die bereits heruntergeladene Speicherhilfe wird wiederverwendet;
-sonst wird SingleFile einmalig geladen (ca. 82 MB).
+Edge oder Chrome muss installiert sein. Self-contained enthält die .NET-Runtime.
+Die kleinere Variante PageCollector-win-x64-framework-dependent benötigt die
+.NET 10 Desktop Runtime für Windows x64. Für den Quelltext wird das SDK benötigt.
+Die bereits heruntergeladene Speicherhilfe wird wiederverwendet; sonst wird
+SingleFile einmalig geladen (ca. 82 MB).
+
+Wie bei FileScope ist -Publish jetzt framework-dependent. Für die bisherige
+Variante mit Runtime zusätzlich -SelfContained angeben. Die beiden Pakete in
+getrennte Ordner entpacken. Ein Publish leert nur seinen eigenen Ausgabeordner.
 
 SUCHWERTE UND URL-VORLAGEN
 

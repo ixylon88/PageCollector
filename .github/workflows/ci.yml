@@ -27,9 +27,13 @@ jobs:
       - name: Restore, check formatting, build and test
         shell: pwsh
         run: ./Verify.ps1 -Configuration Release
-      - name: Publish Windows x64 application
+      # Keep these sequential: both modes share project restore/build intermediates.
+      - name: Publish framework-dependent Windows x64 application
         shell: pwsh
         run: ./Build.ps1 -Configuration Release -NoRestore -Publish
+      - name: Publish self-contained Windows x64 application
+        shell: pwsh
+        run: ./Build.ps1 -Configuration Release -NoRestore -Publish -SelfContained
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v7.0.2
@@ -37,9 +41,15 @@ jobs:
           name: PageCollector-TestResults
           path: artifacts/TestResults/*.trx
           if-no-files-found: warn
-      - name: Upload Windows x64 application
+      - name: Upload framework-dependent Windows x64 application
         uses: actions/upload-artifact@v7.0.2
         with:
-          name: PageCollector-Windows-x64
+          name: PageCollector-win-x64-framework-dependent
           path: dist/win-x64/
+          if-no-files-found: error
+      - name: Upload self-contained Windows x64 application
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: PageCollector-win-x64-self-contained
+          path: dist/win-x64_self-contained/
           if-no-files-found: error
