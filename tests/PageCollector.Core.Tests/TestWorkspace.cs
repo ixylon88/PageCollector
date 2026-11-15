@@ -1,5 +1,4 @@
 using System.Text;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using PageCollector.Core;
 
 namespace PageCollector.Core.Tests;

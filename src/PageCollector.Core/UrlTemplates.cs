@@ -20,9 +20,13 @@ public static partial class UrlTemplates
         }
 
         // Select before encoding, so one position always refers to an input character.
-        var expanded = Placeholder().Replace(template, match => Uri.EscapeDataString(match.Groups[1].Success ? Select(value, match.Groups[1].Value) : value));
+        var expanded = Placeholder().Replace(template, match => Uri.EscapeDataString(
+            match.Groups[1].Success ? Select(value, match.Groups[1].Value) : value));
 
-        if (expanded.IndexOfAny(['{', '}']) >= 0 || !Uri.TryCreate(expanded, UriKind.Absolute, out var uri) || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps) || string.IsNullOrWhiteSpace(uri.Host) || !string.IsNullOrEmpty(uri.UserInfo))
+        if (expanded.IndexOfAny(['{', '}']) >= 0 ||
+            !Uri.TryCreate(expanded, UriKind.Absolute, out var uri) ||
+            (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps) ||
+            string.IsNullOrWhiteSpace(uri.Host) || !string.IsNullOrEmpty(uri.UserInfo))
         {
             throw new ArgumentException($"Ungültige HTTP(S)-Vorlage: {template}");
         }

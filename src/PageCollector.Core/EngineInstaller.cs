@@ -35,26 +35,24 @@ public static class EngineInstaller
             var length = response.Content.Headers.ContentLength ?? DownloadBytes;
             await using (var source = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false))
             {
-                await using (var target = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, true))
+                await using var target = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, true);
+                var buffer = new byte[81920];
+                long total = 0;
+                int count;
+                var lastProgress = DateTime.UtcNow;
+
+                while ((count = await source.ReadAsync(buffer, cancellationToken).ConfigureAwait(false)) != 0)
                 {
-                    var buffer = new byte[81920];
-                    long total = 0;
-                    int count;
-                    var lastProgress = DateTime.UtcNow;
+                    await target.WriteAsync(buffer.AsMemory(0, count), cancellationToken).ConfigureAwait(false);
+                    total += count;
 
-                    while ((count = await source.ReadAsync(buffer, cancellationToken).ConfigureAwait(false)) != 0)
+                    if ((DateTime.UtcNow - lastProgress).TotalMilliseconds < 150)
                     {
-                        await target.WriteAsync(buffer.AsMemory(0, count), cancellationToken).ConfigureAwait(false);
-                        total += count;
-
-                        if ((DateTime.UtcNow - lastProgress).TotalMilliseconds < 150)
-                        {
-                            continue;
-                        }
-
-                        progress?.Report(Math.Clamp((double)total / length, 0, 1));
-                        lastProgress = DateTime.UtcNow;
+                        continue;
                     }
+
+                    progress?.Report(Math.Clamp((double)total / length, 0, 1));
+                    lastProgress = DateTime.UtcNow;
                 }
             }
 

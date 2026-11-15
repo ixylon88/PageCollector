@@ -1,5 +1,4 @@
 using System.IO;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using PageCollector.App.ViewModels;
 
 namespace PageCollector.App.Tests;

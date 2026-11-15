@@ -17,7 +17,7 @@ public sealed class CaptureRunner
             CreateNoWindow = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
-            WorkingDirectory = Path.GetDirectoryName(Path.GetFullPath(targetPath))!
+            WorkingDirectory = Path.GetDirectoryName(Path.GetFullPath(targetPath))
         };
 
         foreach (var argument in Arguments(candidate.Url, targetPath, options))

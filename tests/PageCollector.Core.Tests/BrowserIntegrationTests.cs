@@ -1,4 +1,3 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using PageCollector.Core;
 
 namespace PageCollector.Core.Tests;
@@ -54,6 +53,6 @@ public sealed class BrowserIntegrationTests : TestWorkspace
             Assert.Inconclusive("Set PAGECOLLECTOR_TEST_ENGINE, PAGECOLLECTOR_TEST_BROWSER and PAGECOLLECTOR_TEST_URL to enable browser integration tests.");
         }
 
-        return (new CaptureOptions(Path.GetFullPath(engine!), browser!), new Uri(fixture!));
+        return (new CaptureOptions(Path.GetFullPath(engine), browser), new Uri(fixture));
     }
 }

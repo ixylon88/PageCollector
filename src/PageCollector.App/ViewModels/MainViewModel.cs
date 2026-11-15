@@ -21,7 +21,6 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private CancellationTokenSource? cancellation;
     private string outputDirectory = "";
     private string previewDirectory = "";
-    private bool busy;
     private bool autoPreview;
     private bool logWarningShown;
     private bool automatic;
@@ -75,170 +74,138 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     public RelayCommand OpenOutputCommand { get; }
 
-    public bool IsBusy => busy;
+    public bool IsBusy { get; private set; }
 
-    public bool CanEdit => session is null && !busy;
+    public bool CanEdit => session is null && !IsBusy;
 
     public bool IsManual => !Automatic;
 
     public bool CanAutoPreview => CanEdit && IsManual;
 
-    private bool CanDecide => session is not null && !busy && !Automatic;
+    private bool CanDecide => session is not null && !IsBusy && !Automatic;
 
     public string FilenameExample => "Beispiel: " + ArchiveNaming.BuildStem("123456", "Beispiel Seitentitel", new(Prefix, Suffix, IncludeTitle)) + ".html";
 
-    private string _values = "";
-
     public string Values
     {
-        get => _values;
-        set => SetProperty(ref _values, value);
-    }
-
-    private string _templates = "";
+        get;
+        set => SetProperty(ref field, value);
+    } = "";
 
     public string Templates
     {
-        get => _templates;
-        set => SetProperty(ref _templates, value);
-    }
-
-    private string _outputDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "PageCollector");
+        get;
+        set => SetProperty(ref field, value);
+    } = "";
 
     public string OutputDirectory
     {
-        get => _outputDirectory;
-        set => SetProperty(ref _outputDirectory, value);
-    }
-
-    private string _browserPath = "";
+        get;
+        set => SetProperty(ref field, value);
+    } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "PageCollector");
 
     public string BrowserPath
     {
-        get => _browserPath;
-        set => SetProperty(ref _browserPath, value);
-    }
-
-    private string _delaySeconds = "1,5";
+        get;
+        set => SetProperty(ref field, value);
+    } = "";
 
     public string DelaySeconds
     {
-        get => _delaySeconds;
-        set => SetProperty(ref _delaySeconds, value);
-    }
-
-    private bool _autoPreview = true;
+        get;
+        set => SetProperty(ref field, value);
+    } = "1,5";
 
     public bool AutoPreview
     {
-        get => _autoPreview;
-        set => SetProperty(ref _autoPreview, value);
-    }
-
-    private bool _automatic = true;
+        get;
+        set => SetProperty(ref field, value);
+    } = true;
 
     public bool Automatic
     {
-        get => _automatic;
+        get;
         set
         {
-            if (SetProperty(ref _automatic, value))
+            if (SetProperty(ref field, value))
             {
                 OnPropertyChanged(nameof(IsManual));
                 OnPropertyChanged(nameof(CanAutoPreview));
                 RefreshState();
             }
         }
-    }
-
-    private string _excludedTitles = TitleFilter.DefaultRules;
+    } = true;
 
     public string ExcludedTitles
     {
-        get => _excludedTitles;
-        set => SetProperty(ref _excludedTitles, value);
-    }
-
-    private string _prefix = "";
+        get;
+        set => SetProperty(ref field, value);
+    } = TitleFilter.DefaultRules;
 
     public string Prefix
     {
-        get => _prefix;
+        get;
         set
         {
-            if (SetProperty(ref _prefix, value))
+            if (SetProperty(ref field, value))
             {
                 OnPropertyChanged(nameof(FilenameExample));
             }
         }
-    }
-
-    private string _suffix = "";
+    } = "";
 
     public string Suffix
     {
-        get => _suffix;
+        get;
         set
         {
-            if (SetProperty(ref _suffix, value))
+            if (SetProperty(ref field, value))
             {
                 OnPropertyChanged(nameof(FilenameExample));
             }
         }
-    }
-
-    private bool _includeTitle = true;
+    } = "";
 
     public bool IncludeTitle
     {
-        get => _includeTitle;
+        get;
         set
         {
-            if (SetProperty(ref _includeTitle, value))
+            if (SetProperty(ref field, value))
             {
                 OnPropertyChanged(nameof(FilenameExample));
             }
         }
-    }
-
-    private string _status = "Bereit. Zum Ausprobieren oben „Demo laden“ wählen.";
+    } = true;
 
     public string Status
     {
-        get => _status;
-        private set => SetProperty(ref _status, value);
-    }
-
-    private string _details = "Beim ersten Start wird SingleFile CLI einmalig von GitHub geladen (ca. 82 MB).";
+        get;
+        private set => SetProperty(ref field, value);
+    } = "Bereit. Zum Ausprobieren oben „Demo laden“ wählen.";
 
     public string Details
     {
-        get => _details;
-        private set => SetProperty(ref _details, value);
-    }
-
-    private string _currentUrl = "";
+        get;
+        private set => SetProperty(ref field, value);
+    } = "Beim ersten Start wird SingleFile CLI einmalig von GitHub geladen (ca. 82 MB).";
 
     public string CurrentUrl
     {
-        get => _currentUrl;
-        private set => SetProperty(ref _currentUrl, value);
-    }
-
-    private bool _isIndeterminate;
+        get;
+        private set => SetProperty(ref field, value);
+    } = "";
 
     public bool IsIndeterminate
     {
-        get => _isIndeterminate;
-        private set => SetProperty(ref _isIndeterminate, value);
+        get;
+        private set => SetProperty(ref field, value);
     }
-
-    private double _progress;
 
     public double Progress
     {
-        get => _progress;
-        private set => SetProperty(ref _progress, value);
+        get;
+        private set => SetProperty(ref field, value);
     }
 
     private async Task StartAsync()
@@ -298,8 +265,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
             try
             {
-                var engine = await captureService.EnsureEngineAsync(progress, cancellation!.Token);
-                captureOptions = captureOptions! with
+                var engine = await captureService.EnsureEngineAsync(progress, cancellation.Token);
+                captureOptions = captureOptions with
                 {
                     EnginePath = engine
                 };
@@ -398,7 +365,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private async Task AcceptAsync()
     {
-        if (session is null || capture is null || busy)
+        if (session is null || capture is null || IsBusy)
         {
             return;
         }
@@ -434,7 +401,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private async Task NextAsync()
     {
-        if (session is null || busy)
+        if (session is null || IsBusy)
         {
             return;
         }
@@ -453,7 +420,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private async Task RetryAsync()
     {
-        if (session is null || busy)
+        if (session is null || IsBusy)
         {
             return;
         }
@@ -464,7 +431,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private async Task SkipAsync()
     {
-        if (session is null || busy)
+        if (session is null || IsBusy)
         {
             return;
         }
@@ -479,7 +446,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         cancellation?.Cancel();
         RefreshState();
 
-        if (busy)
+        if (IsBusy)
         {
             Status = "Wird abgebrochen…";
         }
@@ -491,7 +458,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     private async Task RunOperationAsync(Func<Task> operation)
     {
-        busy = true;
+        IsBusy = true;
         RefreshState();
 
         try
@@ -514,7 +481,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
         finally
         {
-            busy = false;
+            IsBusy = false;
             Progress = 0;
             RefreshState();
         }
@@ -757,7 +724,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
-        if (busy)
+        if (IsBusy)
         {
             throw new InvalidOperationException("StopAsync must finish before disposing the view model.");
         }

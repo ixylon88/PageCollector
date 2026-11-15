@@ -6,6 +6,7 @@ using System.Text.Json;
 namespace PageCollector.Core;
 
 public sealed record SavedArchive(string HtmlPath, string MetadataPath);
+
 public static class ArchiveStore
 {
     private static readonly JsonSerializerOptions MetadataOptions = new()
@@ -13,7 +14,13 @@ public static class ArchiveStore
         WriteIndented = true
     };
 
-    public static async Task<SavedArchive> SaveAsync(string directory, Candidate candidate, CaptureResult capture, CancellationToken cancellationToken, ArchiveNamingOptions? naming = null, bool automatic = false)
+    public static async Task<SavedArchive> SaveAsync(
+        string directory,
+        Candidate candidate,
+        CaptureResult capture,
+        CancellationToken cancellationToken,
+        ArchiveNamingOptions? naming = null,
+        bool automatic = false)
     {
         Directory.CreateDirectory(directory);
         var stem = ArchiveNaming.BuildStem(candidate.Value, capture.Title, naming ?? new());
@@ -47,10 +54,8 @@ public static class ArchiveStore
             {
                 await using (target)
                 {
-                    await using (var source = File.OpenRead(capture.FilePath))
-                    {
-                        await source.CopyToAsync(target, cancellationToken).ConfigureAwait(false);
-                    }
+                    await using var source = File.OpenRead(capture.FilePath);
+                    await source.CopyToAsync(target, cancellationToken).ConfigureAwait(false);
                 }
 
                 string hash;
@@ -61,7 +66,21 @@ public static class ArchiveStore
 
                 await using var sidecar = new FileStream(metadata, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, true);
                 metadataCreated = true;
-                await JsonSerializer.SerializeAsync(sidecar, new { formatVersion = 2, searchValue = candidate.Value, urlTemplate = candidate.Template, requestedUrl = candidate.Url, title = capture.Title, capturedAtUtc = capture.CapturedAtUtc, acceptedAtUtc = DateTimeOffset.UtcNow, fileName = Path.GetFileName(html), sha256 = hash, captureEngine = "SingleFile CLI " + EngineInstaller.Version, approval = automatic ? "automatic-title-filter" : "manual" }, MetadataOptions, cancellationToken).ConfigureAwait(false);
+                var provenance = new
+                {
+                    formatVersion = 2,
+                    searchValue = candidate.Value,
+                    urlTemplate = candidate.Template,
+                    requestedUrl = candidate.Url,
+                    title = capture.Title,
+                    capturedAtUtc = capture.CapturedAtUtc,
+                    acceptedAtUtc = DateTimeOffset.UtcNow,
+                    fileName = Path.GetFileName(html),
+                    sha256 = hash,
+                    captureEngine = "SingleFile CLI " + EngineInstaller.Version,
+                    approval = automatic ? "automatic-title-filter" : "manual"
+                };
+                await JsonSerializer.SerializeAsync(sidecar, provenance, MetadataOptions, cancellationToken).ConfigureAwait(false);
 
                 return new(html, metadata);
             }
