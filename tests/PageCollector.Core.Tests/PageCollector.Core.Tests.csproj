@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.1" />
+    <PackageReference Include="MSTest.TestAdapter" Version="4.4.1" />
+    <PackageReference Include="MSTest.TestFramework" Version="4.4.1" />
+    <ProjectReference Include="../../src/PageCollector.Core/PageCollector.Core.csproj" />
+    <ProjectReference Include="../PageCollector.CaptureFixture/PageCollector.CaptureFixture.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+  <Target Name="CopyCaptureFixture" AfterTargets="Build">
+    <ItemGroup>
+      <CaptureFixtureFiles Include="../PageCollector.CaptureFixture/bin/$(Configuration)/net10.0/*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(CaptureFixtureFiles)" DestinationFolder="$(OutDir)CaptureFixture" SkipUnchangedFiles="true" />
+  </Target>
+</Project>

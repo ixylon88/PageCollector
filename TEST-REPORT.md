@@ -1,67 +1,49 @@
-# Verification of PageCollector 0.2
+# Tests and verification
 
-Prepared on 2026-11-15. Verification ran in a Linux build environment using .NET SDK 10.0.100. The Windows UI was not exercised here.
-
-| Check | Result |
-| --- | --- |
-| Release compilation of the WPF application | Passed; zero warnings, zero errors. |
-| Self-contained `win-x64` publish | Passed. |
-| Core automated checks | 26 passed on Linux. |
-| Process-based capture / filter / automatic storage using a controlled test executable | Passed; the first excluded title is skipped and the second page is saved without approval. |
-| Real SingleFile 2.26.0 / Chromium capture | Blocked by this host: Chromium cannot create its required Unix-domain socket (`Operation not permitted`). No successful real browser integration run is claimed. |
-| Windows UI, file associations, Edge/Chrome and real archive collection | Not run for 0.2; requires a Windows machine. |
+Run `.\Verify.ps1` on Windows to reproduce the CI checks: restore, `dotnet format --verify-no-changes --severity warn`, Release build of the complete solution, and MSTest. TRX files are written to `artifacts/TestResults` and uploaded by GitHub Actions. `Build.ps1 -Publish` additionally produces a self-contained Windows x64 application.
 
 ## Automated coverage
 
-The checks exercise:
+| Area | Checks |
+| --- | --- |
+| URL templates | Original placeholders, indexed lists/ranges, leading zeros, Unicode text elements, URL encoding and validation before capture. |
+| Title rules and filenames | Prefix/substring exclusions, full-title matching, literal punctuation, missing titles, affixes, Windows filename safety and word-boundary truncation. |
+| Collection and storage | Priority/reset behavior, automatic rejection/failure/exhaustion, cancellation, destination failures, unchanged HTML, full provenance, collisions and CSV escaping. |
+| HTML reader | Large embedded resources, comments/scripts/inert templates, entity decoding and incomplete titles. |
+| Capture process | Real child-process success/failure, missing/invalid output, cancellation, timeout and draining both diagnostic streams. The controlled executable runs on Windows and Linux. |
+| View model | Automatic/manual collection, next source, invalid inputs, preparation failure, command availability, cancellation, save retries, property notifications and old/new settings. |
+| Windows UI | Real XAML bindings, two-way input, command bindings and manual-control visibility on an STA thread. |
+| Settings storage | Replacement/readback without leftover temporary files, and malformed JSON. |
 
-- Existing placeholder compatibility and encoded special characters.
-- One-based single positions, comma lists, inclusive ranges, mixed selections, leading zeros and Unicode text elements.
-- Invalid selectors, unknown placeholders, unsafe URL schemes/hosts and too-short values rejected before a run starts.
-- Title prefix / substring rules, case-insensitive comparison, literal punctuation, missing titles and matches beyond the filename/title display limit.
-- Loading a 0.1 settings file with the new automatic defaults, and round-tripping edited settings.
-- First accepted source stopping further attempts for that value; resetting priority for the next value.
-- Prefix/suffix placement, Windows filename safety, 100-character title limits, word boundaries and long single-word/Unicode cases.
-- Full titles in metadata, unchanged captured HTML bytes, collision numbering and no overwrites.
-- Title extraction after large stylesheets, ignoring comments/scripts/inert templates, entity decoding and incomplete HTML titles.
-- Automatic rejection of dead ends, failures/timeouts and exhausted values; removal of temporary captures.
-- Cancellation retaining completed results without accepting the interrupted value.
-- Destination failures stopping the queue without falsely accepting a source.
-- UTF-8 CSV escaping and a readable log during a run.
-- Successful and failed helper processes and prompt termination on cancellation.
+The deterministic suite does not download SingleFile or contact external websites. Each test owns its temporary files. Core test classes may run in parallel; WPF tests are serial because tracing and dispatcher state are shared.
 
-Three process checks use Unix shell test executables and are skipped on Windows; `Verify.cmd` runs the other 23 core checks there. The optional real-browser checks are separate from the 26 successful checks above.
+The core suite was executed in the Linux development environment: **31 passed, 2 optional browser tests skipped**. The complete solution also compiled in Release with **zero warnings and zero errors**. Windows runtime checks are delegated to the Windows CI job. A cross-platform build alone is not evidence that the WPF window ran successfully.
 
-## Windows smoke test
+## Optional real-browser integration
 
-1. Extract the complete package to a new folder and run `Start.cmd`.
-2. Check that old search values, templates, output directory and browser settings were retained. The new automatic and title-filename options should initially be enabled when upgrading from 0.1.
-3. Click **Demo laden → Starten**. Two HTML files should be saved with ` - Example Domain` in their filenames. The run should finish without opening preview tabs or requesting acceptance.
-4. In **Dateinamen**, set prefix `KB` and suffix `_DEU`; inspect the filename example and repeat the demo. Confirm the affixes and unchanged earlier files.
-5. Add `^Example Domain` to the exclusions and rerun the demo. Both values should finish with no accepted page; no new HTML should appear.
-6. Remove that rule and try the real source templates, including indexed placeholders. Check the CSV for ordered attempts and that later templates are not requested after a passing page is saved.
-7. Try a too-short value for an indexed template. The start should fail with the affected value and template number.
-8. Disable automation. Check that the manual review buttons and optional automatic preview work as before, with title exclusions displayed as hints.
-9. Cancel a multi-value run. Previously saved files should remain; no partial new archive should count as accepted.
-10. Close and reopen the application; check that mode, rules and naming settings persist. Resize the window and inspect all three settings tabs.
+Start the checked-in HTTP fixture in a separate terminal:
 
-## Optional browser integration fixture
-
-Serve the bundled fixture directory, for example with Python:
-
-```text
-python -m http.server 8765 --bind 127.0.0.1 --directory tests/fixtures
+```powershell
+python -m http.server 8765 --bind 127.0.0.1 --directory tests/fixture
 ```
 
-In another terminal on Windows, run:
+In the test terminal, configure an existing SingleFile CLI executable and an installed Edge/Chrome browser:
 
-```bat
-dotnet run --project tests/PageCollector.Checks -c Release -- "%LOCALAPPDATA%\PageCollector\tools\single-file-2.26.0.exe" "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" "http://127.0.0.1:8765/index.html" "capture-test"
+```powershell
+$env:PAGECOLLECTOR_TEST_ENGINE = "$env:LOCALAPPDATA\PageCollector\tools\single-file-2.26.0.exe"
+$env:PAGECOLLECTOR_TEST_BROWSER = "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
+$env:PAGECOLLECTOR_TEST_URL = 'http://127.0.0.1:8765/index.html'
+dotnet test tests/PageCollector.Core.Tests -c Release --filter TestCategory=BrowserIntegration
 ```
 
-Adjust the browser path if necessary and use a fresh output directory. This adds two real-browser checks:
+Without all three variables, the two tests are reported as skipped. They verify embedded styling/images, delayed content and automatic rejection of Wayback/404 fixture titles before accepting the article. The default CI does not claim a successful real-browser capture.
 
-1. Capturing an article with external CSS, SVG and delayed JavaScript text. After capture, stop the server and open `capture-test/offline.html` to inspect the offline rendering.
-2. Trying a Wayback-titled fixture, an HTTP-200 soft-404 fixture, the actual article, and a final trap URL in that order. The first two must be rejected, the article saved as `KB123456_DEU - PageCollector fixture.html`, and the final URL never requested.
+## Manual Windows smoke test
 
-The Linux integration fixture supplies a container-specific browser argument. The Windows application does not disable the browser sandbox. The blocked Linux browser run is an environment limitation, not evidence of successful capture on Windows.
+1. Publish with `.\Build.ps1 -Publish`, start with `.\Start.cmd` and check that existing settings were retained.
+2. Click **Demo laden → Starten**. Two files with ` - Example Domain` should be saved without previews or approval prompts.
+3. Set prefix `KB` and suffix `_DEU`, inspect the example, and repeat. Existing files must not be overwritten.
+4. Collect representative real URLs with your exclusion list and review the saved HTML and CSV. Title checks cannot detect every error page.
+5. Disable automatic mode. Verify preview, acceptance, next URL, retry and skipping.
+6. Cancel an active capture, then start again. Also close the window during capture and confirm that no helper process remains.
+7. Check browser/file dialogs, output-folder opening and result double-clicks. These OS interactions are not covered by the binding test.

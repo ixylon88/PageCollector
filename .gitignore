@@ -7,3 +7,5 @@ dist/
 artifacts/
 *_wpftmp.csproj
 tests/testdata
+TestResults/
+*.trx

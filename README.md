@@ -4,7 +4,7 @@ A small C# / WPF application for Windows that tries URL templates in order and s
 
 ## Quick start
 
-1. Extract the entire ZIP and run `Start.cmd` (or `app/PageCollector.exe`).
+1. Open `PageCollector.sln` and build the source as described below, or download the **PageCollector-Windows-x64** artifact from a successful GitHub Actions run, extract the entire ZIP and run `PageCollector.exe`.
 2. Enter search values and URL templates in the first tab, or use **Demo laden** for a functional test with two values on `example.com`.
 3. The **Automatik und Ausschlusstitel** tab enables automatic collection by default. Review its title exclusions before a real collection.
 4. Optionally set a filename prefix and suffix in **Dateinamen**. Appending the page title is enabled by default.
@@ -149,24 +149,43 @@ The semicolon-separated UTF-8 CSV (with BOM for Excel) records attempted URLs, t
 - Normal completion/cancellation removes session previews. A crash may leave temporary files behind.
 - Windows ARM64 is not a separately built or tested target.
 
-## Build and verification
+## Solution, build and tests
 
-Install a .NET 10 SDK on Windows, then run:
+Use Windows and the .NET 10 SDK selected by `global.json`. Open **PageCollector.sln** in a Visual Studio version that supports .NET 10 and select **PageCollector.App** as the startup project. MSTest tests appear in Test Explorer.
 
-```bat
-Build.cmd
-Verify.cmd
+| Project | Responsibility |
+| --- | --- |
+| `src/PageCollector.App` | WPF views, bindable view model, commands and Windows service adapters. |
+| `src/PageCollector.Core` | URL expansion, title filtering, collection state, capture and archive storage. |
+| `tests/PageCollector.Core.Tests` | MSTest unit tests and controlled process integration tests. |
+| `tests/PageCollector.App.Tests` | Windows MSTest tests for view-model flows, settings and WPF bindings. |
+| `tests/PageCollector.CaptureFixture` | Small test executable that simulates capture success, errors, timeout and noisy output. |
+
+From PowerShell in the repository root:
+
+```powershell
+.\Verify.ps1                  # Restore, check formatting, build, run tests
+.\Build.ps1                   # Build the complete solution
+.\Build.ps1 -Publish          # Also publish a self-contained app to dist/win-x64
+.\Start.cmd                   # Start the published application
 ```
 
-`Build.cmd` publishes a self-contained build to `dist\win-x64`; `Run-Source.cmd` runs from source. Equivalent commands:
+`Build.cmd` and `Verify.cmd` remain compatibility wrappers; `Build.cmd` includes publishing. `Run-Source.cmd` runs the WPF app directly from source. All scripts stop on failed .NET commands.
 
-```text
-dotnet build src/PageCollector.App/PageCollector.App.csproj -c Release
-dotnet run --project tests/PageCollector.Checks -c Release
-dotnet publish src/PageCollector.App/PageCollector.App.csproj -c Release -r win-x64 --self-contained true -o dist/win-x64
+The equivalent individual commands are:
+
+```powershell
+dotnet restore PageCollector.sln
+dotnet format PageCollector.sln --verify-no-changes --no-restore --severity warn
+dotnet build PageCollector.sln -c Release --no-restore
+dotnet test PageCollector.sln -c Release --no-build --no-restore
 ```
 
-There are no application NuGet dependencies beyond the framework. `PageCollector.Core` contains URL expansion, title reading/filtering, sequential collection, storage and process/download handling. The WPF application owns the UI and settings. See [TEST-REPORT.md](TEST-REPORT.md) for automated checks and the optional local browser fixture.
+GitHub Actions runs the same PowerShell scripts on Windows for pushes and pull requests to `dev` or `main`. It uploads TRX test results and a self-contained Windows x64 build. No browser or external website is needed for the default tests. The two real-browser integration tests are opt-in and otherwise reported as skipped; see [TEST-REPORT.md](TEST-REPORT.md).
+
+Core tests also run on Linux/macOS with `dotnet test tests/PageCollector.Core.Tests`. WPF execution and UI tests require Windows. `Verify.ps1` selects core tests on other platforms, while still compiling the complete solution with Windows targeting enabled.
+
+The app and core have no third-party application NuGet packages. Dependency injection is constructor-based, with no container or MVVM framework. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for responsibilities and [docs/EDITORCONFIG.md](docs/EDITORCONFIG.md) for formatting and analyzer rules.
 
 ## Troubleshooting
 
@@ -178,4 +197,4 @@ There are no application NuGet dependencies beyond the framework. `PageCollector
 
 ## Third-party projects
 
-[SingleFile CLI](https://github.com/gildas-lormeau/single-file-cli) by Gildas Lormeau is a separate AGPL-licensed executable downloaded on first use. It is not bundled in this ZIP. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for the pinned release, digest and runtime notices.
+[SingleFile CLI](https://github.com/gildas-lormeau/single-file-cli) by Gildas Lormeau is a separate AGPL-licensed executable downloaded on first use. It is not bundled in the published application. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for the pinned release, digest and runtime notices.

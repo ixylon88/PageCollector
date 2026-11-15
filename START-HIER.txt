@@ -1,17 +1,23 @@
 PageCollector 0.2
 =================
 
-1. Das gesamte ZIP in einen neuen Ordner entpacken.
-2. Start.cmd doppelklicken.
-3. Zum Funktionstest „Demo laden“, danach „Starten“ wählen.
+AUS DEM REPOSITORY STARTEN
+
+1. Unter Windows ein .NET-10-SDK installieren und PageCollector.sln öffnen.
+2. In PowerShell im Repo: .\Verify.ps1
+3. Danach: .\Build.ps1 -Publish und .\Start.cmd
+
+Alternativ das Artefakt PageCollector-Windows-x64 aus einem erfolgreichen
+GitHub-Actions-Lauf vollständig entpacken und PageCollector.exe starten.
+Zum Funktionstest „Demo laden“, danach „Starten“ wählen.
 
 Das Programm übernimmt die vorhandenen Einstellungen aus Version 0.1.
 NEU: Automatik und Seitentitel im Dateinamen sind standardmäßig aktiv.
 Der Automatiklauf öffnet keine Vorschau und verlangt keine Bestätigung.
 Gespeicherte Dateien lassen sich per Doppelklick in der Ergebnisliste öffnen.
 
-Edge oder Chrome muss installiert sein. Eine zusätzliche .NET-Installation
-ist nicht nötig. Die bereits heruntergeladene Speicherhilfe wird wiederverwendet;
+Edge oder Chrome muss installiert sein. Beim veröffentlichten Build ist keine zusätzliche
+.NET-Installation nötig; für den Quelltext wird das SDK benötigt. Die bereits heruntergeladene Speicherhilfe wird wiederverwendet;
 sonst wird SingleFile einmalig geladen (ca. 82 MB).
 
 SUCHWERTE UND URL-VORLAGEN
@@ -95,8 +101,8 @@ Nach einem Abbruch können die fehlenden Werte anhand des Protokolls erneut
 gesammelt werden. Es gibt noch kein automatisches Fortsetzen.
 
 Build und automatisierte Prüfungen sind dokumentiert in TEST-REPORT.md.
-Die neue Windows-Oberfläche und echte Edge-/Chrome-Aufnahmen benötigen noch
-einen praktischen Test auf Windows. Der Browserlauf in der Linux-Testumgebung
-ist durch eine Socket-Einschränkung blockiert.
+Die CI prüft Build, MSTest-Tests und WPF-Bindings unter Windows. Echte
+Edge-/Chrome-Aufnahmen sind separate, optionale Integrationstests. Ein
+praktischer Test mit deinen Zielseiten bleibt sinnvoll.
 
 Vollständiger C#-Quelltext und englische README sind enthalten.
