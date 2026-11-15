@@ -1,4 +1,4 @@
-# FileScope | EditorConfig
+# PageCollector | EditorConfig
 # Erklärungen und Werte nebeneinander: docs/EDITORCONFIG.md
 # Kommentare müssen eigene Zeilen haben; kein # oder ; hinter einem Wert.
 # Regelstufen: none = aus, suggestion = Hinweis, warning = Warnung, error = Fehler.
@@ -299,7 +299,7 @@ dotnet_diagnostic.SX1309.severity = error
 dotnet_diagnostic.SX1309S.severity = error
 
 # 11 | Async-/Threading-Analyzer (optional)
-# VSTHRD ist über Directory.Build.props eingebunden; AsyncFixer bleibt optional.
+# VSTHRD und AsyncFixer sind optional; es ist kein solches Paket referenziert.
 # [AUS] AsyncFixer01: Überflüssiges async/await erkennen.
 dotnet_diagnostic.AsyncFixer01.severity = none
 # [AUS] AsyncFixer02: Blockierende Aufrufe in async-Methoden erkennen.
@@ -379,7 +379,7 @@ dotnet_naming_style.pascal_case.word_separator =
 
 # 15 | Ausnahmen für [**Test**.cs]
 [**Test**.cs]
-# Dieses Muster trifft Namen mit "Test"; CoreChecks.cs/UiChecks.cs verwenden stattdessen tests/.editorconfig.
+# Dieses Muster gilt für die MSTest-Testklassen.
 # [AUS] CA1707: Unterstriche in Bezeichnern vermeiden.
 dotnet_diagnostic.CA1707.severity = none
 # [AUS] CA1822: Instanzunabhängige Member static machen.
@@ -444,3 +444,8 @@ indent_style = space
 indent_size = 2
 # Mit Leerzeichen statt Tabulatoren einrücken.
 indent_style = space
+
+# 24 | CI-Konfiguration
+[*.{yml,yaml}]
+indent_size = 2
+end_of_line = lf
