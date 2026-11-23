@@ -211,7 +211,7 @@
               Maximum="100"
               Height="6"
               Margin="0,8,0,0"
-              Value="{Binding Progress}"
+              Value="{Binding Progress, Mode=OneWay}"
               Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibility}}"/>
             <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
               <Button Content="Ordner öffnen" Command="{Binding OpenFolderCommand}" ToolTip="{Binding ToolsDirectory}"/>
