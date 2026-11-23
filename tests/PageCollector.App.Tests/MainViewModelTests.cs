@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text.Json;
 using PageCollector.App.ViewModels;
 
 namespace PageCollector.App.Tests;
@@ -27,6 +28,9 @@ public sealed class MainViewModelTests : ViewModelWorkspace
         ViewModel.AutoPreview = true;
         await ViewModel.StartCommand.ExecuteAsync();
 
+        using var metadata = JsonDocument.Parse(await File.ReadAllTextAsync(Directory.GetFiles(ViewModel.OutputDirectory, "*.source.json").Single()));
+
+        Assert.AreEqual("SingleFile CLI " + FakeEngine.Latest.Version, metadata.RootElement.GetProperty("captureEngine").GetString());
         Assert.AreEqual(1, Capture.Attempts.Count);
         Assert.HasCount(1, Directory.GetFiles(ViewModel.OutputDirectory, "*.html"));
         Assert.IsEmpty(Desktop.OpenedPaths);
@@ -44,6 +48,8 @@ public sealed class MainViewModelTests : ViewModelWorkspace
         await ViewModel.StartCommand.ExecuteAsync();
 
         Assert.IsFalse(ViewModel.CanEdit);
+        Assert.IsFalse(ViewModel.Engines.InstallCommand.CanExecute(null));
+        Assert.IsFalse(ViewModel.Engines.RefreshCommand.CanExecute(null));
         Assert.IsTrue(ViewModel.AcceptCommand.CanExecute(null));
         Assert.IsEmpty(Directory.GetFiles(ViewModel.OutputDirectory, "*.html"));
         await ViewModel.AcceptCommand.ExecuteAsync();
@@ -74,7 +80,7 @@ public sealed class MainViewModelTests : ViewModelWorkspace
         ViewModel.Templates = "https://example.com/{id:4-6}";
         await ViewModel.StartCommand.ExecuteAsync();
 
-        Assert.AreEqual(0, Capture.PreparationCount);
+        Assert.AreEqual(0, Engine.PreparationCount);
         Assert.HasCount(1, Desktop.Errors);
         Assert.IsTrue(ViewModel.CanEdit);
         Assert.IsFalse(Directory.Exists(ViewModel.OutputDirectory));
@@ -83,7 +89,7 @@ public sealed class MainViewModelTests : ViewModelWorkspace
     [TestMethod]
     public async Task PreparationFailureRestoresStartCommandAsync()
     {
-        Capture.PreparationError = new IOException("Test preparation failure");
+        Engine.PreparationError = new IOException("Test preparation failure");
         await ViewModel.StartCommand.ExecuteAsync();
 
         Assert.IsTrue(ViewModel.StartCommand.CanExecute(null));
@@ -126,7 +132,7 @@ public sealed class MainViewModelTests : ViewModelWorkspace
         ViewModel.ExcludedTitles = "";
         ViewModel.Automatic = false;
         ViewModel.SaveSettings();
-        using var restored = new MainViewModel(Desktop, Capture, Settings, Root);
+        using var restored = new MainViewModel(Desktop, Capture, Settings, Root, Engine);
 
         Assert.AreEqual("KB", restored.Prefix);
         Assert.AreEqual("_DEU", restored.Suffix);
@@ -136,7 +142,7 @@ public sealed class MainViewModelTests : ViewModelWorkspace
         {
             Prefix = new string('x', 60)
         };
-        using var clamped = new MainViewModel(Desktop, Capture, Settings, Root);
+        using var clamped = new MainViewModel(Desktop, Capture, Settings, Root, Engine);
 
         Assert.AreEqual(40, clamped.Prefix.Length);
     }

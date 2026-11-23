@@ -34,8 +34,8 @@
           Foreground="#4F5663"/>
       </StackPanel>
     </DockPanel>
-    <TabControl Grid.Row="1" x:Name="InputsPanel" IsEnabled="{Binding CanEdit}" Margin="0,0,0,8">
-      <TabItem Header="1. Suchwerte und URL-Vorlagen">
+    <TabControl Grid.Row="1" x:Name="InputsPanel" SelectionChanged="Inputs_SelectionChanged" Margin="0,0,0,8">
+      <TabItem Header="1. Suchwerte und URL-Vorlagen" IsEnabled="{Binding CanEdit}">
         <Grid Margin="9">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="1*"/>
@@ -81,7 +81,7 @@
           </GroupBox>
         </Grid>
       </TabItem>
-      <TabItem Header="2. Automatik und Ausschlusstitel">
+      <TabItem Header="2. Automatik und Ausschlusstitel" IsEnabled="{Binding CanEdit}">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
           <Grid Margin="18,12">
             <Grid.RowDefinitions>
@@ -118,7 +118,7 @@
           </Grid>
         </ScrollViewer>
       </TabItem>
-      <TabItem Header="3. Dateinamen">
+      <TabItem Header="3. Dateinamen" IsEnabled="{Binding CanEdit}">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
           <Grid Margin="18,12">
             <Grid.ColumnDefinitions>
@@ -175,6 +175,53 @@
               Foreground="#4F5663"
               Text="Lange Titel werden an einer Wortgrenze gekürzt. Ungültige Dateizeichen werden ersetzt. Der vollständige Titel bleibt in der .source.json erhalten. Vorhandene Dateien werden nicht überschrieben."/>
           </Grid>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem x:Name="EngineTab" Header="4. Speicherhilfe" IsEnabled="{Binding CanConfigureEngine}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="18,12" DataContext="{Binding Engines}">
+            <TextBlock Text="Aktive Speicherhilfe" FontWeight="SemiBold"/>
+            <TextBlock x:Name="ActiveEngineText" Text="{Binding ActiveVersion}" Margin="0,4,0,10"/>
+            <DockPanel>
+              <Button Content="Versionen prüfen" DockPanel.Dock="Right" Command="{Binding RefreshCommand}" Margin="8,0,0,0"/>
+              <Button
+                x:Name="InstallEngineButton"
+                Content="Installieren / aktivieren"
+                DockPanel.Dock="Right"
+                Command="{Binding InstallCommand}"
+                Margin="8,0,0,0"/>
+              <ComboBox
+                x:Name="EngineVersionBox"
+                ItemsSource="{Binding Choices}"
+                DisplayMemberPath="Label"
+                SelectedItem="{Binding SelectedChoice}"
+                IsEnabled="{Binding CanManage}"
+                AutomationProperties.Name="SingleFile-Version"
+                MinWidth="260"
+                VerticalContentAlignment="Center"/>
+            </DockPanel>
+            <TextBlock
+              Margin="0,8,0,0"
+              TextWrapping="Wrap"
+              Foreground="#4F5663"
+              Text="Standard ist die neueste stabile Version. Eine aktivierte ältere Version bleibt ausgewählt. Vorhandene Installationen bleiben für einen Wechsel zurück erhalten."/>
+            <TextBlock Text="{Binding Status}" TextWrapping="Wrap" Margin="0,8,0,0"/>
+            <ProgressBar
+              Minimum="0"
+              Maximum="100"
+              Height="6"
+              Margin="0,8,0,0"
+              Value="{Binding Progress, Mode=OneWay}"
+              Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibility}}"/>
+            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+              <Button Content="Ordner öffnen" Command="{Binding OpenFolderCommand}" ToolTip="{Binding ToolsDirectory}"/>
+              <Button
+                Content="Abbrechen"
+                Command="{Binding CancelCommand}"
+                Margin="8,0,0,0"
+                Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibility}}"/>
+            </StackPanel>
+          </StackPanel>
         </ScrollViewer>
       </TabItem>
     </TabControl>

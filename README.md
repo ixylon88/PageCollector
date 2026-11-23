@@ -11,9 +11,19 @@ A small C# / WPF application for Windows that tries URL templates in order and s
 5. Select an output directory and click **Starten**. The application finishes each value before moving to the next; no browser tabs or approval prompts are opened in automatic mode.
 6. Open saved results by double-clicking their rows, or use **Ausgabeordner öffnen**.
 
-Both packages target **Windows x64**. The **self-contained** package includes its .NET runtime. The smaller **framework-dependent** package requires the **.NET 10 Desktop Runtime (x64)** on the target computer. Edge or Chrome must be installed. The first run downloads the pinned SingleFile CLI 2.26.0 helper (about 82 MB) from its official GitHub release and verifies its SHA-256 digest. An already downloaded, verified helper is reused. A preview can be opened in any default browser, including Firefox.
+Both packages target **Windows x64**. The **self-contained** package includes its .NET runtime. The smaller **framework-dependent** package requires the **.NET 10 Desktop Runtime (x64)** on the target computer. Edge or Chrome must be installed. On first capture, a new installation downloads the latest known stable SingleFile CLI Windows release from the official GitHub repository and verifies its size and SHA-256 digest. Existing verified installations are reused. The **Speicherhilfe** tab can check releases, install a chosen version and switch back to a previously installed one. A preview can be opened in any default browser, including Firefox.
 
 For the German walkthrough, see [START-HIER.txt](START-HIER.txt). Build and test details are in [TEST-REPORT.md](TEST-REPORT.md).
+
+## SingleFile version management
+
+Open **4. Speicherhilfe** to load the official release list. **Neueste stabile Version (Standard)** is selected initially; choose a concrete version to use an older release. Click **Installieren / aktivieren** to download, verify and activate the selection. Merely changing the dropdown or checking releases does not switch the active engine. A successful explicit version choice survives restarts.
+
+The list includes stable releases with a Windows executable and a valid SHA-256 digest supplied by GitHub. Prereleases, releases without that asset and older releases without a published digest are omitted. **Versionen prüfen** refreshes the list; cached releases remain available if GitHub is unreachable or rate-limits requests. “Latest” refers to the most recent successful check. Updates are explicit: collecting pages keeps using the active version until you activate another one.
+
+**Aktive Speicherhilfe** shows the version used for new collection runs. **Ordner öffnen** opens `%LOCALAPPDATA%\PageCollector\tools`. Executables are stored as `single-file-<version>.exe`; `engine.json` stores release checksums, the active installation and the successful selection. Downloads use temporary files and are activated only after size/hash verification. Failed or cancelled downloads keep the previous selection. Installed versions remain in the list for rollback and are verified again before use. Switching to an already installed version works offline.
+
+An existing `single-file-2.26.0.exe` from earlier PageCollector builds is recognized and still checked against its original pinned digest. It is not forcibly updated. New installs resolve the latest stable release; there is no silent fallback to the old pinned version. Version changes are disabled during collection, including manual review. Closing the app cancels and awaits a pending download.
 
 ## Changes from 0.1
 
@@ -135,7 +145,7 @@ Affixes are literal text; separators such as `_` or spaces are entered explicitl
 - The **full title and search value** remain in `.source.json`, and the captured HTML bytes are unchanged.
 - Existing files are never overwritten. Collisions produce `... (2).html`, with a matching sidecar, then `(3)`, etc.
 
-The JSON sidecar records the value, template, requested URL, full title, capture/acceptance timestamps, saved filename and SHA-256. `approval` is `automatic-title-filter` or `manual`. `requestedUrl` is not labelled as the final redirected URL. SingleFile normally also embeds source information in the HTML.
+The JSON sidecar records the value, template, requested URL, full title, capture/acceptance timestamps, saved filename, SHA-256 and the actual SingleFile version used for that capture. `approval` is `automatic-title-filter` or `manual`. `requestedUrl` is not labelled as the final redirected URL. SingleFile normally also embeds source information in the HTML.
 
 The semicolon-separated UTF-8 CSV (with BOM for Excel) records attempted URLs, title rejections, capture/save errors, accepted files and values with no accepted candidate. Settings are retained in `%LOCALAPPDATA%\PageCollector\settings.json`; the helper is in `%LOCALAPPDATA%\PageCollector\tools`. Existing settings from 0.1 are read from the same location.
 
@@ -204,9 +214,9 @@ The app and core have no third-party application NuGet packages. Dependency inje
 - **No accepted page:** check the session CSV for title exclusions, timeouts or capture errors. Narrow overly broad rules or try the affected value in manual mode.
 - **Browser not found:** select `msedge.exe` or `chrome.exe`, or leave the browser field empty for automatic detection.
 - **Incomplete content:** increase the additional wait before starting again.
-- **Helper cannot download:** check GitHub access, or download the pinned [official Windows executable](https://github.com/gildas-lormeau/single-file-cli/releases/download/v2.26.0/single-file.exe) to `%LOCALAPPDATA%\PageCollector\tools\single-file-2.26.0.exe`. Its hash is still checked before use.
+- **Helper cannot download:** check GitHub access and retry in **Speicherhilfe**. An already installed verified version remains usable during an outage. A first installation needs a successful release check and download. Very old releases without a published SHA-256 digest are not offered.
 - **Windows blocks the unsigned build:** the included source can be built locally.
 
 ## Third-party projects
 
-[SingleFile CLI](https://github.com/gildas-lormeau/single-file-cli) by Gildas Lormeau is a separate AGPL-licensed executable downloaded on first use. It is not bundled in the published application. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for the pinned release, digest and runtime notices.
+[SingleFile CLI](https://github.com/gildas-lormeau/single-file-cli) by Gildas Lormeau is a separate AGPL-licensed executable downloaded on first use. It is not bundled in the published application. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for upstream releases, source/license links and runtime notices.

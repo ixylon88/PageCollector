@@ -25,11 +25,35 @@ Edge oder Chrome muss installiert sein. Self-contained enthält die .NET-Runtime
 Die kleinere Variante PageCollector-win-x64-framework-dependent benötigt die
 .NET 10 Desktop Runtime für Windows x64. Für den Quelltext wird das SDK benötigt.
 Die bereits heruntergeladene Speicherhilfe wird wiederverwendet; sonst wird
-SingleFile einmalig geladen (ca. 82 MB).
+die neueste stabile Windows-Version von SingleFile geladen.
 
 Wie bei FileScope ist -Publish jetzt framework-dependent. Für die bisherige
 Variante mit Runtime zusätzlich -SelfContained angeben. Die beiden Pakete in
 getrennte Ordner entpacken. Ein Publish leert nur seinen eigenen Ausgabeordner.
+
+SPEICHERHILFE VERWALTEN
+
+Im Reiter „4. Speicherhilfe“ wird die offizielle Versionsliste geladen.
+Standard ist „Neueste stabile Version“. Alternativ eine konkrete ältere
+Version wählen und „Installieren / aktivieren“ anklicken. Eine erfolgreich
+aktivierte ältere Auswahl bleibt auch nach einem Neustart erhalten.
+Das bloße Auswählen oder Prüfen der Liste ändert die aktive Version noch nicht.
+
+„Versionen prüfen“ aktualisiert die Liste. „Aktive Speicherhilfe“ zeigt die
+Version für die nächsten Aufnahmen. Updates werden ausdrücklich aktiviert;
+die App arbeitet bis dahin mit der bisherigen Version weiter. „Neueste“
+bezieht sich auf die zuletzt erfolgreich geladene Liste.
+
+„Ordner öffnen“ führt zu %LOCALAPPDATA%\PageCollector\tools.
+Dort liegen single-file-<Version>.exe und engine.json für die Verwaltung.
+Alte Installationen bleiben erhalten und können über die Liste wieder aktiviert
+werden, auch ohne Internet. Vor jeder Verwendung wird die Prüfsumme geprüft.
+Ein fehlgeschlagener oder abgebrochener Download ändert die aktive Auswahl nicht.
+
+Vorhandene Installationen der Version 2.26.0 werden übernommen. Neue
+Installationen brauchen Internet für Versionsliste und Download. Die Liste
+enthält stabile Windows-Releases mit veröffentlichter SHA-256-Prüfsumme.
+Während eines Sammellaufs ist ein Versionswechsel gesperrt.
 
 SUCHWERTE UND URL-VORLAGEN
 

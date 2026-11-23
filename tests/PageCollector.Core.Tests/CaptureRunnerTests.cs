@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 
 namespace PageCollector.Core.Tests;
 
@@ -13,13 +14,16 @@ public sealed class CaptureRunnerTests : TestWorkspace
         var queue = new CollectionSession(["123456"], ["https://example.com/a/{id:1-3}/{id}", "https://example.com/b/{id}"]);
         var output = Path.Combine(Root, "process captures with spaces");
         var temporary = Path.Combine(Root, "process temporary files");
-        var runner = new AutomaticCollector((current, target, token) => new CaptureRunner().CaptureAsync(current, target, new(EnginePath, "/unused browser"), token), TimeSpan.Zero);
+        var runner = new AutomaticCollector((current, target, token) => new CaptureRunner().CaptureAsync(current, target, new(EnginePath, "/unused browser", EngineVersion: "9.8.7"), token), TimeSpan.Zero);
         var events = new List<CollectionEvent>();
         await runner.RunAsync(queue, output, temporary, new(TitleFilter.DefaultRules), new("KB", "_DEU"), events.Add, CancellationToken.None);
 
         Assert.AreEqual(1, queue.AcceptedCount);
         Assert.AreEqual(1, events.Count(e => e.Code == "TitleRejected"));
         Assert.IsTrue(File.Exists(Path.Combine(output, "KB123456_DEU - Original & article.html")));
+        using var metadata = JsonDocument.Parse(await File.ReadAllTextAsync(Directory.GetFiles(output, "*.source.json").Single()));
+
+        Assert.AreEqual("SingleFile CLI 9.8.7", metadata.RootElement.GetProperty("captureEngine").GetString());
     }
 
     [TestMethod]
@@ -79,7 +83,7 @@ public sealed class CaptureRunnerTests : TestWorkspace
     [TestMethod]
     public async Task InvalidEngineHashIsRejectedAsync()
     {
-        Assert.IsFalse(await EngineInstaller.IsValidAsync(Fixture, CancellationToken.None));
+        Assert.IsFalse(await EngineInstaller.IsValidAsync(Fixture, EngineInstaller.LegacyRelease, CancellationToken.None));
     }
 
     private Task<CaptureResult> CaptureAsync(string mode, CancellationToken cancellationToken)

@@ -9,7 +9,10 @@ PageCollector uses MVVM with explicit constructors and small service interfaces.
 | `RelayCommand` / `AsyncCommand` | `ICommand` execution and availability notifications; the async command prevents overlapping executions and observes failures. | Business decisions. |
 | `ObservableObject` | `INotifyPropertyChanged` notifications for WPF bindings. | Application state. |
 | `IDesktopServices` | Dialogs, opening files, displaying errors and dispatching UI updates. | Capture or storage. |
-| `ICaptureService` | Browser resolution, engine preparation and capture. | Choosing the next value or naming saved files. |
+| `ICaptureService` | Browser resolution and capture. | Choosing the next value or naming saved files. |
+| `EngineViewModel` | Release choices, active-version display, update/cancel commands and progress. | Release HTTP requests or installation state serialization. |
+| `IEngineService` / `EngineInstaller` | Release cache, legacy migration, verified downloads and atomic activation. | WPF or collection decisions. |
+| `SingleFileReleases` | Official GitHub pagination, stable Windows asset filtering and version ordering. | Installed-version selection. |
 | `ISettingsStore` | Loading and saving settings. | View state. |
 | `CollectionSession` | Current value/template and accepted-count transitions. | I/O. |
 | `AutomaticCollector` | Ordered attempts, title rejection, acceptance and cleanup. | WPF or browser discovery. |
@@ -21,12 +24,20 @@ These are the Command, Observer and Adapter patterns applied where they separate
 
 The WPF dispatcher owns the view model and its observable results. Core code may continue on background threads; the automatic progress callback goes through `IDesktopServices.Invoke` before changing UI state. UI commands await asynchronous capture rather than blocking the dispatcher.
 
-Starting a run validates inputs and snapshots capture/filter/naming options. Inputs stay disabled while a session exists. Manual mode exposes decisions after each capture; automatic mode proceeds until the queue is exhausted. Saving must succeed before a value counts as accepted.
+Starting a run validates inputs and snapshots capture/filter/naming options, including the installed engine path and version. The capture result carries that version into archive provenance. Inputs stay disabled while a session exists. Manual mode exposes decisions after each capture; automatic mode proceeds until the queue is exhausted. Saving must succeed before a value counts as accepted.
 
 Cancellation flows into engine preparation, the capture process and archive storage. The window cancels and awaits an active command before disposing the view model. Completed archives survive cancellation; temporary previews are removed at session completion. Settings use a temporary file in the same directory and a final replace operation, so a serialization/write failure does not truncate the previous file.
 
+## Engine selection and persistence
+
+The window injects one engine service into the main view model and its child `EngineViewModel`. A collection session and a management operation cannot overlap. Closing waits for both sets of commands after cancellation. The production service reuses an HTTP client; tests inject a client with controlled responses and never contact GitHub.
+
+`tools/engine.json` stores the active release, preferred version (null means latest), latest known stable version and available release metadata. Checking releases only updates the catalog. The active installation changes after a successful verified install and an atomic state-file replacement; previous executables remain available for rollback. Capture preparation reuses and verifies the active installation without checking for updates. A new installation resolves the latest stable release, while the legacy 2.26.0 file is recognized using its known digest.
+
+Release tags must be canonical three-part versions, asset URLs must match the official repository and a SHA-256 digest is required. Cached metadata is validated before constructing paths. Download cancellation, failure or timeout removes temporary files. A failed release check preserves the previous cache and selection. The UI reports the failure, and cached installed versions can still be used offline.
+
 ## Test boundaries
 
-Core tests exercise real file I/O in isolated temporary directories. Process integration tests launch `PageCollector.CaptureFixture`, which behaves deterministically on Windows and Linux without accessing the network. View-model tests substitute only desktop/capture/settings adapters and assert observable outcomes, command availability and saved files. A Windows STA test opens the actual XAML window and checks bindings and manual-mode visibility.
+Core tests exercise real file I/O in isolated temporary directories. Process integration tests launch `PageCollector.CaptureFixture`, which behaves deterministically on Windows and Linux without accessing the network. View-model tests substitute desktop/capture/settings/engine adapters and assert observable outcomes, command availability and saved files. A Windows STA test opens the actual XAML window and checks bindings and manual-mode visibility.
 
 Real SingleFile/browser integration remains opt-in because it depends on an installed browser and a served fixture. Neither the controlled capture executable nor a passing WPF binding test proves that an arbitrary archived website will be captured correctly.

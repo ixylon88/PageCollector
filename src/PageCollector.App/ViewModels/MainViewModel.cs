@@ -12,6 +12,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 {
     private readonly IDesktopServices desktop;
     private readonly ICaptureService captureService;
+    private readonly IEngineService engineService;
     private readonly ISettingsStore settingsStore;
     private readonly string workDirectory;
     private CollectionSession? session;
@@ -27,12 +28,14 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     private TitleFilter titleFilter = new(TitleFilter.DefaultRules);
     private ArchiveNamingOptions naming = new();
 
-    public MainViewModel(IDesktopServices desktop, ICaptureService captureService, ISettingsStore settingsStore, string workDirectory)
+    public MainViewModel(IDesktopServices desktop, ICaptureService captureService, ISettingsStore settingsStore, string workDirectory, IEngineService engineService)
     {
         this.desktop = desktop;
         this.captureService = captureService;
         this.settingsStore = settingsStore;
         this.workDirectory = workDirectory;
+        this.engineService = engineService;
+        Engines = new(engineService, desktop);
         StartCommand = new(StartAsync, () => CanEdit, HandleCommandError);
         AcceptCommand = new(AcceptAsync, () => CanDecide && capture is not null, HandleCommandError);
         NextCommand = new(NextAsync, () => CanDecide, HandleCommandError);
@@ -45,6 +48,13 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         ChooseBrowserCommand = new(ChooseBrowser, () => CanEdit);
         LoadValuesCommand = new(LoadValues, () => CanEdit);
         OpenOutputCommand = new(OpenOutput);
+        Engines.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(EngineViewModel.IsBusy))
+            {
+                RefreshState();
+            }
+        };
         LoadSettings();
     }
 
@@ -76,7 +86,11 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
     public bool IsBusy { get; private set; }
 
-    public bool CanEdit => session is null && !IsBusy;
+    public EngineViewModel Engines { get; }
+
+    public bool CanConfigureEngine => session is null && !IsBusy;
+
+    public bool CanEdit => CanConfigureEngine && !Engines.IsBusy;
 
     public bool IsManual => !Automatic;
 
@@ -254,21 +268,23 @@ public sealed class MainViewModel : ObservableObject, IDisposable
 
         await RunOperationAsync(async () =>
         {
-            Status = "Speicherhilfe prüfen / einmalig herunterladen…";
-            Details = "SingleFile CLI " + EngineInstaller.Version + " · offizieller GitHub-Download · SHA-256-Prüfung";
+            Status = "Aktive Speicherhilfe prüfen / bei Bedarf herunterladen…";
+            Details = "SingleFile CLI · offizieller GitHub-Download · SHA-256-Prüfung";
             IsIndeterminate = false;
             var progress = new Progress<double>(fraction =>
             {
                 Progress = fraction * 100;
-                Details = $"Speicherhilfe herunterladen: {fraction:P0} von ca. 82 MB";
+                Details = $"Speicherhilfe herunterladen: {fraction:P0}";
             });
 
             try
             {
-                var engine = await captureService.EnsureEngineAsync(progress, cancellation.Token);
+                var engine = await engineService.EnsureInstalledAsync(progress, cancellation.Token);
+                Engines.ReloadState();
                 captureOptions = captureOptions with
                 {
-                    EnginePath = engine
+                    EnginePath = engine.FilePath,
+                    EngineVersion = engine.Version
                 };
             }
             catch (OperationCanceledException)
@@ -533,6 +549,8 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     {
         OnPropertyChanged(nameof(IsBusy));
         OnPropertyChanged(nameof(CanEdit));
+        OnPropertyChanged(nameof(CanConfigureEngine));
+        Engines.IsCollectionActive = !CanConfigureEngine;
         OnPropertyChanged(nameof(CanAutoPreview));
 
         foreach (var command in new[]
@@ -719,12 +737,12 @@ public sealed class MainViewModel : ObservableObject, IDisposable
     public async Task StopAsync()
     {
         Cancel();
-        await Task.WhenAll(StartCommand.ExecutionTask, AcceptCommand.ExecutionTask, NextCommand.ExecutionTask, RetryCommand.ExecutionTask, SkipCommand.ExecutionTask);
+        await Task.WhenAll(StartCommand.ExecutionTask, AcceptCommand.ExecutionTask, NextCommand.ExecutionTask, RetryCommand.ExecutionTask, SkipCommand.ExecutionTask, Engines.StopAsync());
     }
 
     public void Dispose()
     {
-        if (IsBusy)
+        if (IsBusy || Engines.IsBusy)
         {
             throw new InvalidOperationException("StopAsync must finish before disposing the view model.");
         }
