@@ -5,11 +5,6 @@ namespace PageCollector.App.Services;
 
 public sealed class SingleFileCaptureService : ICaptureService
 {
-    public Task<string> EnsureEngineAsync(IProgress<double> progress, CancellationToken cancellationToken)
-    {
-        return EngineInstaller.EnsureInstalledAsync(progress, cancellationToken);
-    }
-
     public Task<CaptureResult> CaptureAsync(Candidate candidate, string targetPath, CaptureOptions options, CancellationToken cancellationToken)
     {
         return new CaptureRunner().CaptureAsync(candidate, targetPath, options, cancellationToken);

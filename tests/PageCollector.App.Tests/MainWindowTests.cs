@@ -43,6 +43,19 @@ public sealed class MainWindowTests : ViewModelWorkspace
             Assert.AreEqual(Visibility.Visible, accept.Visibility);
             Assert.IsFalse(accept.IsEnabled);
             Assert.IsTrue(start.IsEnabled);
+            ((TabControl)window.FindName("InputsPanel")).SelectedIndex = 3;
+            FlushBindings(window);
+            var versions = (ComboBox)window.FindName("EngineVersionBox");
+            var install = (Button)window.FindName("InstallEngineButton");
+
+            Assert.AreSame(ViewModel.Engines.InstallCommand, install.Command);
+            Assert.AreSame(ViewModel.Engines.SelectedChoice, versions.SelectedItem);
+            Assert.AreEqual(3, versions.Items.Count);
+            Assert.IsTrue(install.IsEnabled);
+            versions.SelectedIndex = 2;
+            FlushBindings(window);
+
+            Assert.AreEqual(FakeEngine.Older.Version, ViewModel.Engines.SelectedChoice?.Version);
             Assert.AreEqual("", listener.Errors.ToString());
         }
         finally

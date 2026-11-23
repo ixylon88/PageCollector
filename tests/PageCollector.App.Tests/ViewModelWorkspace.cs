@@ -13,6 +13,8 @@ public abstract class ViewModelWorkspace
 
     protected FakeCapture Capture { get; private set; } = null!;
 
+    protected FakeEngine Engine { get; private set; } = null!;
+
     protected MemorySettings Settings { get; private set; } = null!;
 
     protected MainViewModel ViewModel { get; private set; } = null!;
@@ -24,8 +26,9 @@ public abstract class ViewModelWorkspace
         Directory.CreateDirectory(Root);
         Desktop = new();
         Capture = new();
+        Engine = new(Path.Combine(Root, "tools"));
         Settings = new();
-        ViewModel = new(Desktop, Capture, Settings, Root)
+        ViewModel = new(Desktop, Capture, Settings, Root, Engine)
         {
             OutputDirectory = Path.Combine(Root, "saved"),
             Values = "123456",
@@ -73,18 +76,7 @@ public abstract class ViewModelWorkspace
 
         public Func<Candidate, string, CancellationToken, Task<CaptureResult>>? Handler { get; set; }
 
-        public int PreparationCount { get; private set; }
-
-        public Exception? PreparationError { get; set; }
-
         public string ResolveBrowser(string configured) => "test-browser";
-
-        public Task<string> EnsureEngineAsync(IProgress<double> progress, CancellationToken cancellationToken)
-        {
-            PreparationCount++;
-
-            return PreparationError is null ? Task.FromResult("test-engine") : Task.FromException<string>(PreparationError);
-        }
 
         public async Task<CaptureResult> CaptureAsync(Candidate candidate, string targetPath, CaptureOptions options, CancellationToken cancellationToken)
         {
@@ -97,7 +89,57 @@ public abstract class ViewModelWorkspace
 
             await File.WriteAllTextAsync(targetPath, "<!doctype html><html><title>Original title</title><body>Article</body></html>", cancellationToken);
 
-            return new(targetPath, "Original title", DateTimeOffset.UtcNow);
+            return new(targetPath, "Original title", DateTimeOffset.UtcNow, options.EngineVersion);
+        }
+    }
+
+    protected sealed class FakeEngine(string toolsDirectory) : IEngineService
+    {
+        public static readonly EngineRelease Older = new("2.9.0", new string('a', 64), 100);
+        public static readonly EngineRelease Latest = new("2.10.0", new string('b', 64), 100);
+
+        public string ToolsDirectory => toolsDirectory;
+
+        public EngineState State { get; set; } = new(null, null, null, []);
+
+        public int PreparationCount { get; private set; }
+
+        public int RefreshCount { get; private set; }
+
+        public Exception? PreparationError { get; set; }
+
+        public Func<string?, CancellationToken, Task<EngineInstallation>>? InstallHandler { get; set; }
+
+        public EngineState ReadState() => State;
+
+        public Task<EngineState> RefreshAsync(CancellationToken cancellationToken)
+        {
+            RefreshCount++;
+            State = State with { LatestVersion = Latest.Version, Releases = [Latest, Older] };
+
+            return Task.FromResult(State);
+        }
+
+        public Task<EngineInstallation> EnsureInstalledAsync(IProgress<double>? progress, CancellationToken cancellationToken)
+        {
+            PreparationCount++;
+
+            return PreparationError is null
+                ? InstallAsync(State.ActiveRelease?.Version, progress, cancellationToken)
+                : Task.FromException<EngineInstallation>(PreparationError);
+        }
+
+        public async Task<EngineInstallation> InstallAsync(string? preferredVersion, IProgress<double>? progress, CancellationToken cancellationToken)
+        {
+            if (InstallHandler is not null)
+            {
+                return await InstallHandler(preferredVersion, cancellationToken);
+            }
+
+            var release = preferredVersion == Older.Version ? Older : Latest;
+            State = new(release, preferredVersion, Latest.Version, [Latest, Older]);
+
+            return new("test-engine", release.Version);
         }
     }
 

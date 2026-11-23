@@ -77,7 +77,7 @@ public static class ArchiveStore
                     acceptedAtUtc = DateTimeOffset.UtcNow,
                     fileName = Path.GetFileName(html),
                     sha256 = hash,
-                    captureEngine = "SingleFile CLI " + EngineInstaller.Version,
+                    captureEngine = capture.EngineVersion is null ? "SingleFile CLI (version unknown)" : "SingleFile CLI " + capture.EngineVersion,
                     approval = automatic ? "automatic-title-filter" : "manual"
                 };
                 await JsonSerializer.SerializeAsync(sidecar, provenance, MetadataOptions, cancellationToken).ConfigureAwait(false);

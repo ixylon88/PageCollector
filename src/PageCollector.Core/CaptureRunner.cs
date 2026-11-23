@@ -5,8 +5,8 @@ using System.Text.Json;
 
 namespace PageCollector.Core;
 
-public sealed record CaptureOptions(string EnginePath, string BrowserPath, int WaitMilliseconds = 1500, int TimeoutSeconds = 150, IReadOnlyList<string>? BrowserArguments = null);
-public sealed record CaptureResult(string FilePath, string Title, DateTimeOffset CapturedAtUtc);
+public sealed record CaptureOptions(string EnginePath, string BrowserPath, int WaitMilliseconds = 1500, int TimeoutSeconds = 150, IReadOnlyList<string>? BrowserArguments = null, string? EngineVersion = null);
+public sealed record CaptureResult(string FilePath, string Title, DateTimeOffset CapturedAtUtc, string? EngineVersion = null);
 public sealed class CaptureRunner
 {
     public async Task<CaptureResult> CaptureAsync(Candidate candidate, string targetPath, CaptureOptions options, CancellationToken cancellationToken)
@@ -80,7 +80,7 @@ public sealed class CaptureRunner
 
         var title = await HtmlTitleReader.ReadAsync(targetPath, cancellationToken).ConfigureAwait(false);
 
-        return new(targetPath, title, DateTimeOffset.UtcNow);
+        return new(targetPath, title, DateTimeOffset.UtcNow, options.EngineVersion);
     }
 
     public static IReadOnlyList<string> Arguments(string url, string output, CaptureOptions options)

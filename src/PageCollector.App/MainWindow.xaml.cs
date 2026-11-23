@@ -2,6 +2,7 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using PageCollector.App.Services;
 using PageCollector.App.ViewModels;
@@ -17,7 +18,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         var dataDirectory = EngineInstaller.DataDirectory;
-        SetViewModel(new MainViewModel(new WindowsDesktopServices(this), new SingleFileCaptureService(), new JsonSettingsStore(Path.Combine(dataDirectory, "settings.json")), dataDirectory));
+        SetViewModel(new MainViewModel(new WindowsDesktopServices(this), new SingleFileCaptureService(), new JsonSettingsStore(Path.Combine(dataDirectory, "settings.json")), dataDirectory, new EngineInstaller(dataDirectory)));
     }
 
     public MainWindow(MainViewModel viewModel)
@@ -42,6 +43,14 @@ public partial class MainWindow : Window
         }
     }
 
+    private void Inputs_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (e.Source == InputsPanel && InputsPanel.SelectedItem == EngineTab && DataContext is MainViewModel model)
+        {
+            model.Engines.LoadOnce();
+        }
+    }
+
     private void Results_DoubleClick(object sender, MouseButtonEventArgs e)
     {
         if (ResultsGrid.SelectedItem is ResultRow row)
@@ -52,7 +61,7 @@ public partial class MainWindow : Window
 
     private async void Window_Closing(object? sender, CancelEventArgs e)
     {
-        if (ViewModel.IsBusy)
+        if (ViewModel.IsBusy || ViewModel.Engines.IsBusy)
         {
             e.Cancel = true;
 
